@@ -1,11 +1,10 @@
 # coding=utf-8
 from __init__ import *
-
 this_root = '/Volumes/SSD1T/PhD_Thesis_project/'
-data_root = this_root + 'data/'
+# data_root = this_root + 'data/'
+data_root = '/Volumes/SSD1T/hotdrought_branch/data/'
 results_root = this_root + 'results/'
 temp_root = this_root + 'temp/'
-
 class Meta_information:
 
     def __init__(self):
