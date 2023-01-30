@@ -879,9 +879,11 @@ class VODCA:
 
 
 class VOD_AMSRU:
-
+    '''
+    X-band AMSR-E/AMSR2
+    '''
     def __init__(self):
-        self.datadir = join(data_root,'AMSRU_VOD')
+        self.datadir = join(data_root,'VOD_Xband')
         pass
 
     def run(self):
@@ -889,27 +891,10 @@ class VOD_AMSRU:
         pass
 
     def per_pix(self):
-        fdir = join(self.datadir, 'tif/D')
-        outdir = join(self.datadir, 'tif_per_pix')
-        outdir_dateobj = join(self.datadir, 'dateobj')
-        T.mk_dir(outdir)
-        T.mk_dir(outdir_dateobj)
-        for year in T.listdir(fdir):
-            print(year)
-            print('----------------')
-            year_dir = join(fdir, year)
-            outdir_year = join(outdir, year)
-            Pre_Process().data_transform(year_dir, outdir_year)
-            date_obj_list = []
-            for f in T.listdir(year_dir):
-                date = f.split('.')[0]
-                year = date[:4]
-                doy = date[4:7]
-                year = int(year)
-                doy = int(doy)
-                date_obj = datetime.datetime(year, 1, 1) + datetime.timedelta(doy - 1)
-                date_obj_list.append(date_obj)
-            np.save(join(outdir_dateobj, f'{year}.npy'), date_obj_list)
+        fdir = join(self.datadir, 'tif_monthly/D')
+        outdir = join(self.datadir, 'per_pix/2003-2015')
+        T.mk_dir(outdir, force=True)
+        Pre_Process().data_transform(fdir, outdir)
 
 
 class Terraclimate:
@@ -1495,12 +1480,12 @@ def main():
     # GLC2000().run()
     # CCI_SM().run()
     # VODCA().run()
-    # VOD_AMSRU().run()
+    VOD_AMSRU().run()
     # Terraclimate().run()
     # ERA().run()
     # SPI().run()
     # GLEAM_ET().run()
-    GLEAM_SMRoot().run()
+    # GLEAM_SMRoot().run()
 
     pass
 
