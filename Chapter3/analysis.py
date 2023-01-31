@@ -8,25 +8,6 @@ class GLobal_var:
 
         pass
 
-    def load_data(self, var_i, year_range=global_year_range):
-        data_path_dict = Meta_information().path(year_range)
-        data_path = data_path_dict[var_i]['path']
-        path_type = data_path_dict[var_i]['path_type']
-        if path_type == 'file':
-            spatial_dict = T.load_npy(data_path)
-        elif path_type == 'dir':
-            spatial_dict = T.load_npy_dir(data_path)
-        elif path_type == 'multi-files':
-            spatial_dict = {}
-            for f in T.listdir(data_path):
-                print(f'loading {f}')
-                key = f.split('.')[0]
-                spatial_dict_i = T.load_npy(join(data_path, f))
-                spatial_dict[key] = spatial_dict_i
-        else:
-            raise ValueError('path_type not recognized')
-        return spatial_dict
-
     def load_df(self):
         import statistic
         dff = join(statistic.Dataframe().dff)

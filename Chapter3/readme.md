@@ -16,7 +16,7 @@ This Chapter contains:
 >> Ecological Limited Index (ELI)  
 >> Aridity Index (AI)  
 >> Isohydricity  
-### Sentivity between VIs and drought indices
+### sensitivity between VIs and drought indices
 > Correlation  
 > Response lag  
 > SPEI/SPI time scale  
