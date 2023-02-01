@@ -17,6 +17,7 @@ global_ELI_class_color_dict = {
 }
 global_AI_class = ['Humid', 'Arid']
 land_tif = join(this_root,'conf/land.tif')
+land_tif_reproj = join(this_root,'conf/land_reproj.tif')
 global_year_range = '1982-2015'
 global_start_year,global_end_year = global_year_range.split('-')
 global_start_year = int(global_start_year)
@@ -51,6 +52,15 @@ global_VIs_year_range_dict = {
     'CSIF': '2001-2015',
     'CSIF-anomaly': '2001-2015',
 }
+color_list = [
+    '#844000',
+    '#fc9831',
+    '#fffbd4',
+    '#86b9d2',
+    '#064c6c',
+]
+global_cmap = T.cmap_blend(color_list,)
+global_cmap_r = T.cmap_blend(color_list[::-1])
 
 class Meta_information:
 

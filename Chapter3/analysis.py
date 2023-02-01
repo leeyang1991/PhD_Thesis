@@ -194,7 +194,10 @@ class VIs_and_SPEI_correlation:
 
     def run(self):
         # self.cal_correlations()
-        self.tif_correlation()
+        # self.tif_correlation()
+        # self.reproj()
+        # self.land_reproj()
+        self.png_correlation()
 
         pass
 
@@ -264,6 +267,147 @@ class VIs_and_SPEI_correlation:
                 else:
                     raise ValueError('col name error')
                 DIC_and_TIF().pix_dic_to_tif(dic, outf)
+
+    def ortho_wkt(self):
+        wkt = '''
+        PROJCRS["North_Pole_Orthographic",
+    BASEGEOGCRS["WGS 84",
+        DATUM["World Geodetic System 1984",
+            ELLIPSOID["WGS 84",6378137,298.257223563,
+                LENGTHUNIT["metre",1]]],
+        PRIMEM["Greenwich",0,
+            ANGLEUNIT["Degree",0.0174532925199433]]],
+    CONVERSION["North_Pole_Orthographic",
+        METHOD["Orthographic (Spherical)"],
+        PARAMETER["Latitude of natural origin",90,
+            ANGLEUNIT["Degree",0.0174532925199433],
+            ID["EPSG",8801]],
+        PARAMETER["Longitude of natural origin",0,
+            ANGLEUNIT["Degree",0.0174532925199433],
+            ID["EPSG",8802]],
+        PARAMETER["False easting",0,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8806]],
+        PARAMETER["False northing",0,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8807]]],
+    CS[Cartesian,2],
+        AXIS["(E)",east,
+            ORDER[1],
+            LENGTHUNIT["metre",1]],
+        AXIS["(N)",north,
+            ORDER[2],
+            LENGTHUNIT["metre",1]],
+    USAGE[
+        SCOPE["Not known."],
+        AREA["Northern hemisphere."],
+        BBOX[0,-180,90,180]],
+    ID["ESRI",102035]]'''
+        return wkt
+
+    def reproj(self):
+        VIs_list = global_VIs_list
+        pix_to_lon_lat_dict = DIC_and_TIF().spatial_tif_to_lon_lat_dic(temp_root)
+        wkt = self.ortho_wkt()
+        srs = DIC_and_TIF().gen_srs_from_wkt(wkt)
+        for VI in VIs_list:
+            fdir_r = join(self.this_class_tif, 'correlation_tif/{}/r'.format(VI))
+            outdir_r = join(self.this_class_tif, 'correlation_tif/{}/r_reproj'.format(VI))
+            T.mk_dir(outdir_r,force=True)
+            for f in os.listdir(fdir_r):
+                fpath = join(fdir_r, f)
+                outf = join(outdir_r, f)
+                ToRaster().resample_reproj(fpath, outf, 50000,dstSRS=srs)
+                # exit()
+        pass
+
+    def land_reproj(self):
+        land_tif_reproj = land_tif.replace('.tif','_reproj.tif')
+        wkt = self.ortho_wkt()
+        srs = DIC_and_TIF().gen_srs_from_wkt(wkt)
+        ToRaster().resample_reproj(land_tif, land_tif_reproj, 50000, dstSRS=srs)
+        pass
+
+    def png_correlation(self):
+        import matplotlib.patches as mpatches
+        import cartopy.crs as ccrs
+        outdir = join(self.this_class_png, 'correlation_png')
+        map_proj_N = ccrs.Orthographic(central_longitude=0, central_latitude=90)
+        T.mk_dir(outdir)
+        VIs_list = global_VIs_list
+        land_arr, originX, originY, pixelWidth, pixelHeight = ToRaster().raster2array(land_tif_reproj)
+        land_arr = T.mask_999999_arr(land_arr, warning=False)
+        land_arr = ma.masked_where(np.isnan(land_arr), land_arr)
+        # land_arr = land_arr[::-1]
+        for VI in VIs_list:
+            outf = join(outdir, '{}.png'.format(VI))
+            fdir_r = join(self.this_class_tif, 'correlation_tif/{}/r_reproj'.format(VI))
+            # fdir_r = join(self.this_class_tif, 'correlation_tif/{}/r'.format(VI))
+            # fig, axs = plt.subplots(6, 4, figsize=(10, 16))
+            # fig, axs = plt.subplots(1, 2, figsize=(10, 10),projection=map_proj_N)
+            # axs_list = axs.flatten()
+            fig = plt.figure(figsize=(8, 8))
+            flag = 1
+            for f in tqdm(os.listdir(fdir_r)):
+                if not f.endswith('.tif'):
+                    continue
+                fpath = join(fdir_r, f)
+                arr, originX, originY, pixelWidth, pixelHeight = ToRaster().raster2array(fpath)
+                originY1 = copy.copy(originY)
+                arr = T.mask_999999_arr(arr,warning=False)
+                # arr = arr[::-1]
+                arr_m = ma.masked_where(np.isnan(arr), arr)
+                originX = 0
+                originY = originY * 2
+                lon_list = np.arange(originX, originX + pixelWidth * arr.shape[1], pixelWidth)
+                lat_list = np.arange(originY, originY + pixelHeight * arr.shape[0], pixelHeight)
+                lon_list, lat_list = np.meshgrid(lon_list, lat_list)
+                # ortho
+                # ax = axs_list[flag]
+                # ax = fig.add_subplot(1, 1, flag, projection=map_proj_N)
+                ax = fig.add_subplot(1, 1, flag)
+                # ax = None
+                m = Basemap(projection='ortho', lon_0=0, lat_0 = 90.,ax=ax,resolution='l')
+                m.llcrnrlon = -180
+                m.llcrnrlat = -90
+                m.urcrnrlon = 180
+                m.urcrnrlat = 90
+                # flag += 1
+                ret1 = m.pcolormesh(lon_list, lat_list, arr_m, cmap=global_cmap_r,zorder=99,vmin=-0.4,vmax=0.4)
+                # ret2 = m.pcolormesh(lon_list, lat_list, land_arr, cmap='gray',zorder=98, vmin=0, vmax=1.4)
+                clip_circle = mpatches.Circle(xy=[originY1, originY1], radius=originY1*np.cos(np.pi/6),
+                                              facecolor='None', edgecolor='k',zorder=100,lw=2.5)
+                clip_circle1 = mpatches.Circle(xy=[originY1, originY1], radius=originY1,
+                                              facecolor='None', edgecolor='w', zorder=100, lw=6)
+                # clip_circle = mpatches.Circle(xy=[-0, 0],
+                #                               radius=originY1*np.cos(np.pi/6),
+                #                               radius=4950000,
+                                              # facecolor='None', edgecolor='k',zorder=100)
+                # print(clip_circle)
+                # exit()
+                ax.add_patch(clip_circle)
+                ax.add_patch(clip_circle1)
+                # ax.set_boundary(clip_circle.get_path(), transform=None, use_as_clip_path=False)
+                m.drawparallels(np.arange(30., 90., 30.), zorder=99)
+                meridict = m.drawmeridians(np.arange(0., 420., 60.), zorder=99,latmax=90)
+                for obj in meridict:
+                    line = meridict[obj][0][0]
+                    line.set_clip_path(clip_circle.get_path(), clip_circle.get_transform())
+                limb = m.drawmapboundary(fill_color='#EFEFEF', zorder=0)
+                limb.set_clip_path(clip_circle.get_path(), clip_circle.get_transform())
+                coastlines = m.drawcoastlines(zorder=99,linewidth=0.7)
+                coastlines.set_clip_path(clip_circle.get_path(), clip_circle.get_transform())
+                ret1.set_clip_path(clip_circle.get_path(), clip_circle.get_transform())
+                polys = m.fillcontinents(color='#B1B0B1', lake_color='#EFEFEF')
+                for poly in polys:
+                    poly.set_clip_path(clip_circle.get_path(), clip_circle.get_transform())
+
+                plt.show()
+            plt.tight_layout()
+            plt.savefig(outf,dpi=300)
+            plt.close()
+            exit()
+            # plt.show()
 
 class Max_Scale_and_Lag_correlation_SPEI:
     # supplementary
