@@ -43,7 +43,14 @@ global_ELI_class_list = ('Energy-Limited', 'Water-Limited')
 global_AI_class_list = ('Humid', 'Arid')
 global_threshold = 0.05
 
-
+global_VIs_list = ['NDVI','VOD-anomaly','CSIF-anomaly']
+global_VIs_year_range_dict = {
+    'NDVI': '1982-2015',
+    'VOD': '2003-2015',
+    'VOD-anomaly': '2003-2015',
+    'CSIF': '2001-2015',
+    'CSIF-anomaly': '2001-2015',
+}
 
 class Meta_information:
 
@@ -89,7 +96,7 @@ class Meta_information:
                 'path_type': 'dir',
             },
             'VOD-anomaly': {
-                'path': join(data_root, 'VOD_Xband/per_pix_anomaly', year_range),
+                'path': join(data_root, 'VOD_Xband/per_pix_anomaly_detrend', year_range),
                 'path_type': 'dir',
             },
             'Temperature': {

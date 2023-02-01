@@ -109,7 +109,8 @@ class SPEI:
         # self.nc_to_tif()
         # self.per_pix()
         # self.clean()
-        self.every_month()
+        # self.every_month()
+        self.pick_year_range()
         pass
 
     def nc_to_tif(self):
@@ -321,6 +322,45 @@ class SPEI:
             lat_list_new = df['lat'].tolist()
             val_list_new = df['val'].tolist()
             DIC_and_TIF().lon_lat_val_to_tif(lon_list_new, lat_list_new, val_list_new, outpath)
+
+    def pick_year_range(self):
+
+        fdir = join(self.datadir,'per_pix_clean','1982-2015')
+        year_range_list = []
+        for VI in global_VIs_year_range_dict:
+            year_range = global_VIs_year_range_dict[VI]
+            if year_range == '1982-2015':
+                continue
+            outdir = join(self.datadir,'per_pix_clean',year_range)
+            T.mk_dir(outdir)
+            start_year = int(year_range.split('-')[0])
+            end_year = int(year_range.split('-')[1])
+            date_list = []
+            for y in range(1982,2015 + 1):
+                for m in range(1,13):
+                    date = f'{y}-{m:02d}'
+                    date_list.append(date)
+            pick_date_list = []
+            for y in range(start_year, end_year + 1):
+                for m in range(1, 13):
+                    date = f'{y}-{m:02d}'
+                    pick_date_list.append(date)
+            for f in T.listdir(fdir):
+                fpath = join(fdir,f)
+                outf = join(outdir,f)
+                dic = T.load_npy(fpath)
+                picked_vals_dic = {}
+                for pix in tqdm(dic):
+                    vals = dic[pix]
+                    dic_i = dict(zip(date_list,vals))
+                    picked_vals = []
+                    for date in pick_date_list:
+                        val = dic_i[date]
+                        picked_vals.append(val)
+                    picked_vals = np.array(picked_vals)
+                    picked_vals_dic[pix] = picked_vals
+                T.save_npy(picked_vals_dic,outf)
+
 
 class SPI:
     def __init__(self):
@@ -887,7 +927,9 @@ class VOD_AMSRU:
         pass
 
     def run(self):
-        self.per_pix()
+        # self.per_pix()
+        # self.anomaly()
+        self.detrend()
         pass
 
     def per_pix(self):
@@ -896,6 +938,44 @@ class VOD_AMSRU:
         T.mk_dir(outdir, force=True)
         Pre_Process().data_transform(fdir, outdir)
 
+    def anomaly(self):
+        fdir = join(self.datadir, 'per_pix/2003-2015')
+        outdir = join(self.datadir, 'per_pix_anomaly/2003-2015')
+        T.mk_dir(outdir, force=True)
+        Pre_Process().cal_anomaly(fdir, outdir)
+
+    def detrend(self):
+        fdir = join(self.datadir, 'per_pix_anomaly/2003-2015')
+        outdir = join(self.datadir, 'per_pix_anomaly_detrend/2003-2015')
+        T.mk_dir(outdir, force=True)
+        for f in tqdm(T.listdir(fdir)):
+            fpath = join(fdir, f)
+            outf = join(outdir, f)
+            dic = T.load_npy(fpath)
+            dic_detrend = T.detrend_dic(dic)
+            T.save_npy(dic_detrend, outf)
+        pass
+
+class CSIF:
+
+    def __init__(self):
+        self.datadir = join(data_root,'CSIF')
+        pass
+
+    def run(self):
+        self.detrend()
+        pass
+
+    def detrend(self):
+        fdir = join(self.datadir,'per_pix_anomaly/2001-2015')
+        outdir = join(self.datadir,'per_pix_anomaly_detrend/2001-2015')
+        T.mk_dir(outdir,force=True)
+        for f in tqdm(T.listdir(fdir)):
+            fpath = join(fdir,f)
+            outf = join(outdir,f)
+            dic = T.load_npy(fpath)
+            dic_detrend = T.detrend_dic(dic)
+            T.save_npy(dic_detrend,outf)
 
 class Terraclimate:
     def __init__(self):
@@ -1469,7 +1549,7 @@ class GLEAM_SMRoot:
 
 def main():
     # GIMMS_NDVI().run()
-    # SPEI().run()
+    SPEI().run()
     # SPI().run()
     # TMP().run()
     # Precipitation().run()
@@ -1480,7 +1560,8 @@ def main():
     # GLC2000().run()
     # CCI_SM().run()
     # VODCA().run()
-    VOD_AMSRU().run()
+    # VOD_AMSRU().run()
+    # CSIF().run()
     # Terraclimate().run()
     # ERA().run()
     # SPI().run()
