@@ -61,6 +61,11 @@ color_list = [
 ]
 global_cmap = T.cmap_blend(color_list,)
 global_cmap_r = T.cmap_blend(color_list[::-1])
+global_spei_list = ['spei03', 'spei06', 'spei09', 'spei12',
+                     'spei15','spei18', 'spei21', 'spei24',
+                     ]
+global_lag_list = list(range(0, 7))
+
 
 class Meta_information:
 
@@ -154,3 +159,41 @@ class Meta_information:
         else:
             raise ValueError('path_type not recognized')
         return spatial_dict
+
+
+def ortho_wkt():
+    wkt = '''
+    PROJCRS["North_Pole_Orthographic",
+BASEGEOGCRS["WGS 84",
+    DATUM["World Geodetic System 1984",
+        ELLIPSOID["WGS 84",6378137,298.257223563,
+            LENGTHUNIT["metre",1]]],
+    PRIMEM["Greenwich",0,
+        ANGLEUNIT["Degree",0.0174532925199433]]],
+CONVERSION["North_Pole_Orthographic",
+    METHOD["Orthographic (Spherical)"],
+    PARAMETER["Latitude of natural origin",90,
+        ANGLEUNIT["Degree",0.0174532925199433],
+        ID["EPSG",8801]],
+    PARAMETER["Longitude of natural origin",0,
+        ANGLEUNIT["Degree",0.0174532925199433],
+        ID["EPSG",8802]],
+    PARAMETER["False easting",0,
+        LENGTHUNIT["metre",1],
+        ID["EPSG",8806]],
+    PARAMETER["False northing",0,
+        LENGTHUNIT["metre",1],
+        ID["EPSG",8807]]],
+CS[Cartesian,2],
+    AXIS["(E)",east,
+        ORDER[1],
+        LENGTHUNIT["metre",1]],
+    AXIS["(N)",north,
+        ORDER[2],
+        LENGTHUNIT["metre",1]],
+USAGE[
+    SCOPE["Not known."],
+    AREA["Northern hemisphere."],
+    BBOX[0,-180,90,180]],
+ID["ESRI",102035]]'''
+    return wkt

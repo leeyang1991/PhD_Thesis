@@ -197,7 +197,8 @@ class VIs_and_SPEI_correlation:
         # self.tif_correlation()
         # self.reproj()
         # self.land_reproj()
-        self.png_correlation()
+        # self.png_correlation()
+        self.png_correlation_3_products()
 
         pass
 
@@ -321,93 +322,167 @@ class VIs_and_SPEI_correlation:
                 # exit()
         pass
 
-    def land_reproj(self):
-        land_tif_reproj = land_tif.replace('.tif','_reproj.tif')
-        wkt = self.ortho_wkt()
-        srs = DIC_and_TIF().gen_srs_from_wkt(wkt)
-        ToRaster().resample_reproj(land_tif, land_tif_reproj, 50000, dstSRS=srs)
-        pass
 
     def png_correlation(self):
-        import matplotlib.patches as mpatches
-        import cartopy.crs as ccrs
         outdir = join(self.this_class_png, 'correlation_png')
-        map_proj_N = ccrs.Orthographic(central_longitude=0, central_latitude=90)
         T.mk_dir(outdir)
         VIs_list = global_VIs_list
-        land_arr, originX, originY, pixelWidth, pixelHeight = ToRaster().raster2array(land_tif_reproj)
-        land_arr = T.mask_999999_arr(land_arr, warning=False)
-        land_arr = ma.masked_where(np.isnan(land_arr), land_arr)
-        # land_arr = land_arr[::-1]
         for VI in VIs_list:
             outf = join(outdir, '{}.png'.format(VI))
             fdir_r = join(self.this_class_tif, 'correlation_tif/{}/r_reproj'.format(VI))
-            # fdir_r = join(self.this_class_tif, 'correlation_tif/{}/r'.format(VI))
-            # fig, axs = plt.subplots(6, 4, figsize=(10, 16))
-            # fig, axs = plt.subplots(1, 2, figsize=(10, 10),projection=map_proj_N)
-            # axs_list = axs.flatten()
-            fig = plt.figure(figsize=(8, 8))
+            fig = plt.figure(figsize=(8, 12))
             flag = 1
             for f in tqdm(os.listdir(fdir_r)):
                 if not f.endswith('.tif'):
                     continue
                 fpath = join(fdir_r, f)
-                arr, originX, originY, pixelWidth, pixelHeight = ToRaster().raster2array(fpath)
-                originY1 = copy.copy(originY)
-                arr = T.mask_999999_arr(arr,warning=False)
-                # arr = arr[::-1]
-                arr_m = ma.masked_where(np.isnan(arr), arr)
-                originX = 0
-                originY = originY * 2
-                lon_list = np.arange(originX, originX + pixelWidth * arr.shape[1], pixelWidth)
-                lat_list = np.arange(originY, originY + pixelHeight * arr.shape[0], pixelHeight)
-                lon_list, lat_list = np.meshgrid(lon_list, lat_list)
-                # ortho
-                # ax = axs_list[flag]
-                # ax = fig.add_subplot(1, 1, flag, projection=map_proj_N)
-                ax = fig.add_subplot(1, 1, flag)
-                # ax = None
-                m = Basemap(projection='ortho', lon_0=0, lat_0 = 90.,ax=ax,resolution='l')
-                m.llcrnrlon = -180
-                m.llcrnrlat = -90
-                m.urcrnrlon = 180
-                m.urcrnrlat = 90
-                # flag += 1
-                ret1 = m.pcolormesh(lon_list, lat_list, arr_m, cmap=global_cmap_r,zorder=99,vmin=-0.4,vmax=0.4)
-                # ret2 = m.pcolormesh(lon_list, lat_list, land_arr, cmap='gray',zorder=98, vmin=0, vmax=1.4)
-                clip_circle = mpatches.Circle(xy=[originY1, originY1], radius=originY1*np.cos(np.pi/6),
-                                              facecolor='None', edgecolor='k',zorder=100,lw=2.5)
-                clip_circle1 = mpatches.Circle(xy=[originY1, originY1], radius=originY1,
-                                              facecolor='None', edgecolor='w', zorder=100, lw=6)
-                # clip_circle = mpatches.Circle(xy=[-0, 0],
-                #                               radius=originY1*np.cos(np.pi/6),
-                #                               radius=4950000,
-                                              # facecolor='None', edgecolor='k',zorder=100)
-                # print(clip_circle)
-                # exit()
-                ax.add_patch(clip_circle)
-                ax.add_patch(clip_circle1)
-                # ax.set_boundary(clip_circle.get_path(), transform=None, use_as_clip_path=False)
-                m.drawparallels(np.arange(30., 90., 30.), zorder=99)
-                meridict = m.drawmeridians(np.arange(0., 420., 60.), zorder=99,latmax=90)
-                for obj in meridict:
-                    line = meridict[obj][0][0]
-                    line.set_clip_path(clip_circle.get_path(), clip_circle.get_transform())
-                limb = m.drawmapboundary(fill_color='#EFEFEF', zorder=0)
-                limb.set_clip_path(clip_circle.get_path(), clip_circle.get_transform())
-                coastlines = m.drawcoastlines(zorder=99,linewidth=0.7)
-                coastlines.set_clip_path(clip_circle.get_path(), clip_circle.get_transform())
-                ret1.set_clip_path(clip_circle.get_path(), clip_circle.get_transform())
-                polys = m.fillcontinents(color='#B1B0B1', lake_color='#EFEFEF')
-                for poly in polys:
-                    poly.set_clip_path(clip_circle.get_path(), clip_circle.get_transform())
-
-                plt.show()
+                ax = fig.add_subplot(6, 4, flag)
+                flag += 1
+                Plot().plot_ortho(fpath,ax)
+                # ax.set_title(f.split('.')[0].split('_')[1])
             plt.tight_layout()
-            plt.savefig(outf,dpi=300)
+            plt.savefig(outf,dpi=600)
             plt.close()
-            exit()
-            # plt.show()
+
+    def png_correlation_3_products(self):
+        outdir = join(self.this_class_png, 'png_correlation_3_products')
+        T.mk_dir(outdir)
+        outf = join(outdir, 'png_correlation_3_products_notitle.png')
+        VIs_list = global_VIs_list
+        spei_list = ['spei03', 'spei06', 'spei09', 'spei12',
+                     'spei15','spei18', 'spei21', 'spei24',
+                     ]
+        fig = plt.figure(figsize=(16, 6))
+        flag = 1
+        for VI in VIs_list:
+            for scale in spei_list:
+                fpath = join(self.this_class_tif, f'correlation_tif/{VI}/r_reproj/{VI}_{scale}_r.tif')
+                print(fpath,isfile(fpath))
+                ax = fig.add_subplot(3, 8, flag)
+                flag += 1
+                Plot().plot_ortho(fpath, ax, vmin=-0.4,vmax=0.4)
+                # ax.set_title(f'{VI}_{scale}')
+        plt.tight_layout()
+        plt.savefig(outf, dpi=600)
+        plt.close()
+        pass
+
+
+class VIs_and_SPEI_lag_correlation:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir(
+            'VIs_and_SPEI_lag_correlation',
+            result_root_this_script, mode=2)
+        pass
+
+
+    def run(self):
+        # self.cal_correlations()
+        # self.tif_correlation()
+        # self.reproj()
+        self.png_correlation()
+
+
+    def cal_correlations(self):
+        outdir = join(self.this_class_arr, 'correlation_dataframe')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+
+        gs = global_gs
+        VIs_list = global_VIs_list
+        VIs_year_range_dict = global_VIs_year_range_dict
+        spei_scale_list = global_spei_list
+        lag_list = global_lag_list
+
+        for VI in VIs_list:
+            outf = join(outdir, f'{VI}.df')
+            if os.path.isfile(outf):
+                continue
+            VI_year_range = VIs_year_range_dict[VI]
+            SPEI_data = Meta_information().load_data('SPEI', VI_year_range)
+            VI_dict = Meta_information().load_data(VI, VI_year_range)
+            result_dict = {}
+            for scale in spei_scale_list:
+                SPEI_dict = SPEI_data[scale]
+                for lag in lag_list:
+                    spatial_dict_r = {}
+                    for pix in tqdm(SPEI_dict,desc=f'{VI}_{scale}_{lag}'):
+                        SPEI = SPEI_dict[pix]
+                        if not pix in VI_dict:
+                            continue
+                        VI_value = VI_dict[pix]
+                        if T.is_all_nan(SPEI) or T.is_all_nan(VI_value):
+                            continue
+                        SPEI_gs = T.monthly_vals_to_annual_val(SPEI, gs, 'array')
+                        VI_gs = T.monthly_vals_to_annual_val(VI_value, gs, 'array')
+                        SPEI_gs_flatten = SPEI_gs.flatten()
+                        VI_gs_flatten = VI_gs.flatten()
+                        if not len(SPEI_gs_flatten) == len(VI_gs_flatten):
+                            continue
+                        r,p = T.lag_correlation(SPEI_gs_flatten,VI_gs_flatten,lag)
+                        spatial_dict_r[pix] = r
+                        key_r = f'{VI}_{scale}_{lag}'
+                        result_dict[key_r] = spatial_dict_r
+            df = T.spatial_dics_to_df(result_dict)
+            T.save_df(df, outf)
+            T.df_to_excel(df, outf)
+
+    def tif_correlation(self):
+        VIs_list = global_VIs_list
+        fdir = join(self.this_class_arr, 'correlation_dataframe')
+        for VI in VIs_list:
+            outdir_r = join(self.this_class_tif, 'correlation_tif/{}/r'.format(VI))
+            T.mk_dir(outdir_r,force=True)
+            # T.open_path_and_file(outdir_r)
+            dff = join(fdir,'{}.df'.format(VI))
+            df = T.load_df(dff)
+            cols = df.columns.tolist()
+            cols.remove('pix')
+            for col in tqdm(cols,desc=VI):
+                dic = T.df_to_spatial_dic(df, col)
+                outf = join(outdir_r, f'{col}.tif')
+                DIC_and_TIF().pix_dic_to_tif(dic, outf)
+
+    def reproj(self):
+        VIs_list = global_VIs_list
+        pix_to_lon_lat_dict = DIC_and_TIF().spatial_tif_to_lon_lat_dic(temp_root)
+        wkt = ortho_wkt()
+        srs = DIC_and_TIF().gen_srs_from_wkt(wkt)
+        for VI in VIs_list:
+            fdir_r = join(self.this_class_tif, 'correlation_tif/{}/r'.format(VI))
+            outdir_r = join(self.this_class_tif, 'correlation_tif/{}/r_reproj'.format(VI))
+            T.mk_dir(outdir_r,force=True)
+            for f in tqdm(os.listdir(fdir_r),desc=VI):
+                fpath = join(fdir_r, f)
+                outf = join(outdir_r, f)
+                ToRaster().resample_reproj(fpath, outf, 50000,dstSRS=srs)
+        pass
+
+    def png_correlation(self):
+        outdir = join(self.this_class_png, 'correlation_png')
+        T.mk_dir(outdir)
+        VIs_list = global_VIs_list
+        lag_list = global_lag_list
+        spei_list = global_spei_list
+        for VI in VIs_list:
+            outf = join(outdir, '{}2.png'.format(VI))
+            fdir_r = join(self.this_class_tif, 'correlation_tif/{}/r_reproj'.format(VI))
+            fig = plt.figure(figsize=(8*2, 7*2))
+            flag = 1
+            for lag in lag_list:
+                for scale in spei_list:
+                    print(f'{VI}_{scale}_{lag}')
+                    fpath = join(fdir_r, f'{VI}_{scale}_{lag}.tif')
+                    ax = fig.add_subplot(7, 8, flag)
+                    flag += 1
+                    Plot().plot_ortho(fpath, ax,vmin=-0.5,vmax=0.5)
+                    # ax.set_title(f'{scale}_{lag}')
+                    # plt.show()
+            plt.tight_layout()
+            plt.savefig(outf,dpi=600)
+            plt.close()
+
 
 class Max_Scale_and_Lag_correlation_SPEI:
     # supplementary
@@ -1240,7 +1315,8 @@ def gen_world_grid_shp():
 def main():
     # Water_energy_limited_area().run()
     # Growing_season().run()
-    VIs_and_SPEI_correlation().run()
+    # VIs_and_SPEI_correlation().run()
+    VIs_and_SPEI_lag_correlation().run()
     # Max_Scale_and_Lag_correlation_SPEI().run()
     # Max_Scale_and_Lag_correlation_SPI().run()
     # Pick_Drought_Events().run()
