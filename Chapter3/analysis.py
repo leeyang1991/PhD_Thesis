@@ -198,7 +198,9 @@ class VIs_and_SPEI_correlation:
         # self.reproj()
         # self.land_reproj()
         # self.png_correlation()
-        self.png_correlation_3_products()
+        # self.png_correlation_3_products()
+        # self.tif_max_spei_scale()
+        self.png_max_spei_scale()
 
         pass
 
@@ -365,6 +367,78 @@ class VIs_and_SPEI_correlation:
         plt.tight_layout()
         plt.savefig(outf, dpi=600)
         plt.close()
+        pass
+
+    def tif_max_spei_scale(self):
+        outdir = join(self.this_class_tif, 'max_spei_scale')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+        fdir = join(self.this_class_arr,'correlation_dataframe')
+        VIs_list = global_VIs_list
+        for VI in VIs_list:
+            dff = join(fdir,'{}.df'.format(VI))
+            df = T.load_df(dff)
+            cols = df.columns.tolist()
+            cols.remove('pix')
+            cols_r_list = []
+            for col in cols:
+                if col.endswith('_r'):
+                    cols_r_list.append(col)
+            max_r_sptatial_dict = {}
+            max_scale_spaital_dict = {}
+            for i,row in tqdm(df.iterrows(),total=len(df),desc=VI):
+                pix = row['pix']
+                r_list = [row[col] for col in cols_r_list]
+                r_dict = dict(zip(cols_r_list,r_list))
+                max_r = np.nanmax(r_list)
+                max_scale = T.get_max_key_from_dict(r_dict)
+                scale = max_scale.split('_')[1].replace('spei','')
+                scale = int(scale)
+                max_r_sptatial_dict[pix] = max_r
+                max_scale_spaital_dict[pix] = scale
+            outf_r = join(outdir,'{}_max_r.tif'.format(VI))
+            outf_scale = join(outdir,'{}_max_scale.tif'.format(VI))
+            DIC_and_TIF().pix_dic_to_tif(max_r_sptatial_dict,outf_r)
+            DIC_and_TIF().pix_dic_to_tif(max_scale_spaital_dict,outf_scale)
+            Ortho_reprojection().reproj(outf_r,outf_r)
+            Ortho_reprojection().reproj(outf_scale,outf_scale)
+
+    def png_max_spei_scale(self):
+        fdir = join(self.this_class_tif, 'max_spei_scale')
+        outdir = join(self.this_class_png, 'png_max_spei_scale')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+        VI_list = global_VIs_list
+        # plot correlation
+        # flag = 1
+        # plt.figure(figsize=(8, 5))
+        # for VI in global_VIs_list:
+        #     print(VI)
+        #     fpath = join(fdir,f'{VI}_max_r.tif')
+        #     ax = plt.subplot(1,3,flag)
+        #     flag += 1
+        #     Plot().plot_ortho(fpath,vmin=-0.7,vmax=0.7,ax=ax)
+        #     # ax.set_title(VI)
+        # outf = join(outdir,'max_r1.png')
+        # plt.tight_layout()
+        # plt.savefig(outf,dpi=600)
+        # plt.close()
+
+        # plot scale
+        flag = 1
+        plt.figure(figsize=(8, 5))
+        for VI in global_VIs_list:
+            print(VI)
+            fpath = join(fdir, f'{VI}_max_scale.tif')
+            ax = plt.subplot(1, 3, flag)
+            flag += 1
+            Plot().plot_ortho(fpath, vmin=1, vmax=24, ax=ax,cmap=global_cmap)
+            # ax.set_title(VI)
+        outf = join(outdir, 'max_scale1.png')
+        plt.tight_layout()
+        plt.savefig(outf, dpi=600)
+        plt.close()
+
         pass
 
 
@@ -1315,8 +1389,8 @@ def gen_world_grid_shp():
 def main():
     # Water_energy_limited_area().run()
     # Growing_season().run()
-    # VIs_and_SPEI_correlation().run()
-    VIs_and_SPEI_lag_correlation().run()
+    VIs_and_SPEI_correlation().run()
+    # VIs_and_SPEI_lag_correlation().run()
     # Max_Scale_and_Lag_correlation_SPEI().run()
     # Max_Scale_and_Lag_correlation_SPI().run()
     # Pick_Drought_Events().run()
