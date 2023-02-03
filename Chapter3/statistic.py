@@ -217,14 +217,20 @@ class Constant_value:
     check dataframe constant value
     '''
     def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir(
+            'Constant_value',
+            result_root_this_script, mode=2)
         pass
 
     def run(self):
-        # self.hist()
+        self.hist()
         # self.plot_spatial()
         pass
 
     def hist(self):
+        outdir = join(self.this_class_png,'hist')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
         constant_col = [
             'CSIF-anomaly_max_r',
             'aridity_index',
@@ -239,7 +245,9 @@ class Constant_value:
             plt.figure()
             plt.hist(vals,bins=80)
             plt.title(col)
-        plt.show()
+            outf = join(outdir,col+'.png')
+            plt.savefig(outf)
+            plt.close()
 
         pass
 
@@ -701,13 +709,84 @@ class PFTs_and_koppen:
 
 class MAT_MAP:
     def __init__(self):
-
+        self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir(
+            'MAT_MAP',
+            result_root_this_script, mode=2)
         pass
 
     def run(self):
-
+        self.matrix()
         pass
 
+    def matrix(self):
+        outdir = join(self.this_class_png, 'matrix')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+        df = Load_dataframe().load_chapter3()
+        VIs_list = global_VIs_list
+
+        col_z_list = []
+        for VI in VIs_list:
+            col_z_list.append(f'{VI}_max_lag')
+            col_z_list.append(f'{VI}_max_r')
+            col_z_list.append(f'{VI}_max_scale')
+        z_lim_dict = {
+            1: (-0.1, 0.5),
+            2: (0, 6),
+            3: (0, 24),
+        }
+        z_cmap = {
+            1: global_cmap_r,
+            2: global_cmap,
+            3: global_cmap,
+        }
+        col_z_list_pos = {
+            'NDVI_max_r':(1,1),
+            'VOD-anomaly_max_r':(1,2),
+            'CSIF-anomaly_max_r':(1,3),
+
+            'NDVI_max_lag':(2,1),
+            'VOD-anomaly_max_lag':(2,2),
+            'CSIF-anomaly_max_lag':(2,3),
+
+            'NDVI_max_scale':(3,1),
+            'VOD-anomaly_max_scale':(3,2),
+            'CSIF-anomaly_max_scale':(3,3),
+        }
+        temp_bins = np.arange(-20, 20, 1)
+        precip_bins = np.arange(0, 1500, 50)
+        fig,axs = plt.subplots(3,3,figsize=(20,30))
+        for col_z in col_z_list:
+            lc_col = 'landcover_GLC'
+            koppen_col = 'Koppen'
+            ax_ind = col_z_list_pos[col_z]
+            ax = axs[ax_ind[0]-1,ax_ind[1]-1]
+            # ax = plt.subplot(1,1,1)
+            df_group_t,bins_list_str_t = T.df_bin(df,'MAT',temp_bins)
+            matrix = []
+            for name_t,df_group_t_i in df_group_t:
+                df_group_p,bins_list_str_p = T.df_bin(df_group_t_i,'MAP',precip_bins)
+                temp = []
+                for name_p,df_group_p_i in df_group_p:
+                    vals = df_group_p_i[col_z].tolist()
+                    mean = np.nanmean(vals)
+                    temp.append(mean)
+                matrix.append(temp)
+            matrix = np.array(matrix)
+            ret = ax.imshow(matrix, cmap=z_cmap[ax_ind[0]],vmin=z_lim_dict[ax_ind[0]][0],vmax=z_lim_dict[ax_ind[0]][1])
+            ax.set_xticks(np.arange(len(bins_list_str_p)),bins_list_str_p,rotation=90)
+            ax.set_yticks(np.arange(len(bins_list_str_t)),bins_list_str_t)
+            ax.set_xlabel('MAP')
+            ax.set_ylabel('MAT')
+            ax.set_title(col_z)
+            # plt.colorbar(ret)
+            plt.tight_layout()
+        plt.tight_layout()
+        # outf = join(outdir, f'{col_x}.pdf')
+        outf = join(outdir, f'matrix.pdf')
+        plt.savefig(outf, dpi=600)
+        plt.close()
+        # plt.show()
 
 class ELI:
 
@@ -757,7 +836,8 @@ class Temporal:
 def main():
     # Dataframe().run()
     # Constant_value().run()
-    PFTs_and_koppen().run()
+    # PFTs_and_koppen().run()
+    MAT_MAP().run()
     pass
 
 
