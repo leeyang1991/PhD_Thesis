@@ -607,7 +607,6 @@ class PFTs_and_koppen:
         outdir = join(self.this_class_png, 'pfts_koppen_scatter')
         T.mk_dir(outdir)
         T.open_path_and_file(outdir)
-
         df = Load_dataframe().load_chapter3()
 
         VIs_list = global_VIs_list
@@ -617,9 +616,9 @@ class PFTs_and_koppen:
         koppen_color_dict = global_koppen_color_dict
 
         col_x_list = [
-            'aridity_index',
+            # 'aridity_index',
             'ELI',
-            'ISO_Hydricity',
+            # 'ISO_Hydricity',
         ]
 
         col_y_list = []
@@ -628,12 +627,35 @@ class PFTs_and_koppen:
             col_y_list.append(f'{VI}_max_r')
             col_y_list.append(f'{VI}_max_scale')
 
+        col_y_list_pos = {
+            'NDVI_max_r':(1,1),
+            'VOD-anomaly_max_r':(1,2),
+            'CSIF-anomaly_max_r':(1,3),
+
+            'NDVI_max_lag':(2,1),
+            'VOD-anomaly_max_lag':(2,2),
+            'CSIF-anomaly_max_lag':(2,3),
+
+            'NDVI_max_scale':(3,1),
+            'VOD-anomaly_max_scale':(3,2),
+            'CSIF-anomaly_max_scale':(3,3),
+        }
+        y_lim_dict = {
+            1:(-0.1,0.8),
+            2:(0,6),
+            3:(0,24),
+        }
+        # print(col_y_list)
+        # exit()
         for col_x in col_x_list:
+            # plt.figure(figsize=(10,10))
+            fig,axs = plt.subplots(3,3,figsize=(10,10))
             for col_y in col_y_list:
                 lc_col = 'landcover_GLC'
                 koppen_col = 'Koppen'
-
-                plt.figure()
+                ax_ind = col_y_list_pos[col_y]
+                ax = axs[ax_ind[0]-1,ax_ind[1]-1]
+                ylim = y_lim_dict[ax_ind[0]]
                 xx = []
                 yy = []
                 for lc in lc_list:
@@ -646,27 +668,36 @@ class PFTs_and_koppen:
                         y = df_kp[col_y]
                         x = np.array(x)
                         y = np.array(y)
-                        x_err = T.uncertainty_err(x)[0]
-                        y_err = T.uncertainty_err(y)[0]
-                        # x_err = np.nanstd(x)
-                        # y_err = np.nanstd(y)
+                        # x_err = T.uncertainty_err(x)[0]
+                        # y_err = T.uncertainty_err(y)[0]
+                        x_err = np.nanstd(x)
+                        y_err = np.nanstd(y)
                         x_mean = np.nanmean(x)
                         y_mean = np.nanmean(y)
                         xx.append(x_mean)
                         yy.append(y_mean)
-                        plt.errorbar(x_mean, y_mean, xerr=x_err, yerr=y_err,color='gray', alpha=0.5,zorder=-99)
-                        plt.scatter(x_mean, y_mean, marker=lc_marker_dict[lc], color=koppen_color_dict[kp], label=f'{kp}-{lc}',edgecolors='k',zorder=0)
-                        plt.text(x_mean, y_mean, f'{lc} {kp}', fontsize=8)
+                        ax.errorbar(x_mean, y_mean, xerr=x_err, yerr=y_err,color='gray', alpha=0.5,zorder=-99)
+                        ax.scatter(x_mean, y_mean, marker=lc_marker_dict[lc], color=koppen_color_dict[kp], label=f'{kp}-{lc}',edgecolors='k',zorder=99,s=70)
+                        # ax.text(x_mean, y_mean, f'{lc} {kp}', fontsize=8)
                 # plt.legend()
-                sns.regplot(xx, yy, scatter=False, color='gray')
+                sns.regplot(xx, yy, scatter=False, color='gray',ax=ax)
+                a,b,r,p = T.nan_line_fit(xx,yy)
+                # print(a,b,r,p)
+                text1 = f'r2={r**2:.2f} p={p:.2f}'
+                text2 = f'y={a:.2f}x+{b:.2f}'
+                ax.text(0.05, 0.95, text1, transform=ax.transAxes, fontsize=10, verticalalignment='top')
+                ax.text(0.05, 0.9, text2, transform=ax.transAxes, fontsize=10, verticalalignment='top')
                 # plt.title(drt)
-                plt.xlabel(col_x)
-                plt.ylabel(col_y)
+                ax.set_xlabel(col_x)
+                ax.set_ylabel(col_y)
+                ax.set_ylim(ylim)
                 # plt.ylim(0.91, 1.02)
-                outf = join(outdir, f'{col_x}_{col_y}.pdf')
-                plt.savefig(outf, dpi=300)
-                plt.close()
-                # plt.show()
+            plt.tight_layout()
+            # outf = join(outdir, f'{col_x}.pdf')
+            outf = join(outdir, f'{col_x}_with_formular.png')
+            plt.savefig(outf, dpi=600)
+            plt.close()
+            # plt.show()
 
 class MAT_MAP:
     def __init__(self):
