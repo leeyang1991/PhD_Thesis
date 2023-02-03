@@ -42,8 +42,9 @@ class Water_energy_limited_area:
 
     def run(self):
         # self.kendall_corr_all_vars()
-        self.Ecosystem_Limited_Index_p()
+        # self.Ecosystem_Limited_Index_p()
         # self.Ecosystem_Limited_Index()
+        self.plot_png()
         pass
 
     def kendall_corr_all_vars(self):
@@ -149,6 +150,21 @@ class Water_energy_limited_area:
 
         DIC_and_TIF().pix_dic_to_tif(ELI_spatial_dict, outf)
 
+    def plot_png(self):
+        fpath = join(self.this_class_tif,'ELI','GLEAM-ET_ERA-SM_Temperature.tif')
+        outdir = join(self.this_class_png,'GLEAM-ET_ERA-SM_Temperature')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+        outf = join(outdir,'GLEAM-ET_ERA-SM_Temperature.jpg')
+        plt.figure(figsize=(5, 5))
+        ax = plt.subplot(1, 1, 1)
+        m,ret = Plot().plot_ortho(fpath, vmin=-0.7, vmax=0.7, ax=ax, cmap=global_cmap_r)
+        m.colorbar(ret,location='bottom')
+        ax.set_title('ELI')
+        plt.savefig(outf, dpi=600)
+        plt.close()
+        pass
+
 
 class Growing_season:
     def __init__(self):
@@ -199,8 +215,8 @@ class VIs_and_SPEI_correlation:
         # self.land_reproj()
         # self.png_correlation()
         # self.png_correlation_3_products()
-        # self.tif_max_spei_scale()
-        self.png_max_spei_scale()
+        self.tif_max_spei_scale()
+        # self.png_max_spei_scale()
 
         pass
 
@@ -400,8 +416,6 @@ class VIs_and_SPEI_correlation:
             outf_scale = join(outdir,'{}_max_scale.tif'.format(VI))
             DIC_and_TIF().pix_dic_to_tif(max_r_sptatial_dict,outf_r)
             DIC_and_TIF().pix_dic_to_tif(max_scale_spaital_dict,outf_scale)
-            Ortho_reprojection().reproj(outf_r,outf_r)
-            Ortho_reprojection().reproj(outf_scale,outf_scale)
 
     def png_max_spei_scale(self):
         fdir = join(self.this_class_tif, 'max_spei_scale')
@@ -456,8 +470,8 @@ class VIs_and_SPEI_lag_correlation:
         # self.tif_correlation()
         # self.reproj()
         # self.png_correlation()
-        # self.tif_max_lag()
-        self.png_max_lag()
+        self.tif_max_lag()
+        # self.png_max_lag()
 
 
     def cal_correlations(self):
@@ -586,8 +600,6 @@ class VIs_and_SPEI_lag_correlation:
             outf_scale = join(outdir,'{}_max_lag.tif'.format(VI))
             DIC_and_TIF().pix_dic_to_tif(max_r_sptatial_dict,outf_r)
             DIC_and_TIF().pix_dic_to_tif(max_lag_spaital_dict,outf_scale)
-            Ortho_reprojection().reproj(outf_r,outf_r)
-            Ortho_reprojection().reproj(outf_scale,outf_scale)
 
     def png_max_lag(self):
         fdir = join(self.this_class_tif, 'max_lag')
@@ -612,770 +624,121 @@ class VIs_and_SPEI_lag_correlation:
 
         pass
 
-class Max_Scale_and_Lag_correlation_SPEI:
-    # supplementary
-    # max scale: only multiple scale SPEI vs NDVI
-    # max lag: multiple scale SPEI and multiple lag vs NDVI
+class MAT_MAP:
+
     def __init__(self):
         self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir(
-            'Max_Scale_and_Lag_correlation_SPEI',
+            'MAT_MAP',
             result_root_this_script, mode=2)
         pass
 
     def run(self):
-        # self.NDVI_SPEI_correlation_scale_and_lag()
-        # self.NDVI_SPEI_max_correlation_scale_and_lag()
-        # self.NDVI_SPEI_correlation_only_scale()
-        # self.NDVI_SPEI_max_scale_only_scale()
-
-        # self.NDVI_SPEI_correlation_every_scale_and_month()
-        # self.compose_scale_month_to_df()
-        self.max_scale_and_month()
-
-        # self.scale_lag_bivariate_plot()
+        # self.tif_offset()
+        self.plot_png()
         pass
 
-    def NDVI_SPEI_correlation_scale_and_lag(self):
-        '''
-        annual GS NDVI and SPEI correlation
-        :return:
-        '''
-        outdir = join(self.this_class_arr, 'NDVI_SPEI_correlation_scale_and_lag')
-        T.mk_dir(outdir)
-        outf = join(outdir, 'NDVI_SPEI_correlation.df')
-        lag_list = list(range(5))
-
-        # gs_dict = Growing_season().longterm_growing_season()
-        NDVI_spatial_dict = GLobal_var().load_data('NDVI')
-        SPEI_spatial_dicts = GLobal_var().load_data('SPEI')
-        dict_all = {}
-        for lag in lag_list:
-            for scale in SPEI_spatial_dicts:
-                SPEI_spatial_dict = SPEI_spatial_dicts[scale]
-                scale = scale.split('.')[0]
-                correlation_spatial_dict = {}
-                for pix in tqdm(NDVI_spatial_dict, desc=f'lag:{lag},scale:{scale}'):
-                    # if not pix in gs_dict:
-                    #     continue
-                    if not pix in SPEI_spatial_dict:
-                        continue
-                    # gs = gs_dict[pix]
-                    ndvi = NDVI_spatial_dict[pix]
-                    spei = SPEI_spatial_dict[pix]
-                    spei = T.detrend_vals(spei)
-                    gs = list(gs)
-                    # ndvi_annual = T.monthly_vals_to_annual_val(ndvi,gs)
-                    # spei_annual = T.monthly_vals_to_annual_val(spei,gs)
-                    ndvi_gs = T.pick_gs_monthly_data(ndvi, gs)
-                    spei_gs = T.pick_gs_monthly_data(spei, gs)
-                    r, p = T.lag_correlation(spei_gs, ndvi_gs, lag * len(gs), method='spearman')
-                    correlation_spatial_dict[pix] = r
-                key = '{}-lag{}'.format(scale, lag)
-                dict_all[key] = correlation_spatial_dict
-        df = T.spatial_dics_to_df(dict_all)
-        T.save_df(df, outf)
-        T.df_to_excel(df, outf)
-
-    def NDVI_SPEI_max_correlation_scale_and_lag(self):
-        outdir = join(self.this_class_tif, 'NDVI_SPEI_max_correlation_scale_and_lag')
-        T.mk_dir(outdir)
-        dff = join(self.this_class_arr, 'NDVI_SPEI_correlation_scale_and_lag', 'NDVI_SPEI_correlation.df')
-        df = T.load_df(dff)
-        # df = df.dropna()
-        cols = df.columns.tolist()
-        cols.remove('pix')
-        # exit()
-        max_r = []
-        max_lag_list = []
-        max_scale_list = []
-        for i, row in tqdm(df.iterrows(), total=len(df)):
-            dict_i = {}
-            for col in cols:
-                dict_i[col] = row[col]
-            max_key = T.get_max_key_from_dict(dict_i)
-            scale, lag = max_key.split('-')
-            scale = scale.replace('spei', '')
-            scale = int(scale)
-            lag = lag.replace('lag', '')
-            lag = int(lag)
-            max_scale_list.append(scale)
-            max_lag_list.append(lag)
-            r = dict_i[max_key]
-            max_r.append(r)
-        df['max_r'] = max_r
-        df['max_scale'] = max_scale_list
-        df['max_lag'] = max_lag_list
-
-        spatial_dict_r = T.df_to_spatial_dic(df, 'max_r')
-        spatial_dict_scale = T.df_to_spatial_dic(df, 'max_scale')
-        spatial_dict_lag = T.df_to_spatial_dic(df, 'max_lag')
-
-        outf_r = join(outdir, 'max_r.tif')
-        outf_scale = join(outdir, 'max_scale.tif')
-        outf_lag = join(outdir, 'max_lag.tif')
-        DIC_and_TIF().pix_dic_to_tif(spatial_dict_r, outf_r)
-        DIC_and_TIF().pix_dic_to_tif(spatial_dict_scale, outf_scale)
-        DIC_and_TIF().pix_dic_to_tif(spatial_dict_lag, outf_lag)
-
-    def NDVI_SPEI_correlation_only_scale(self):
-        outdir = join(self.this_class_arr, 'NDVI_SPEI_correlation_only_scale')
-        T.mk_dir(outdir)
-        outf = join(outdir, 'NDVI_SPEI_correlation.df')
-
-        # gs_dict = Growing_season().longterm_growing_season()
-        NDVI_spatial_dict = GLobal_var().load_data('NDVI')
-        SPEI_spatial_dicts = GLobal_var().load_data('SPEI')
-        dict_all = {}
-        for scale in SPEI_spatial_dicts:
-            SPEI_spatial_dict = SPEI_spatial_dicts[scale]
-            scale = scale.split('.')[0]
-            correlation_spatial_dict = {}
-            for pix in tqdm(NDVI_spatial_dict, desc=f'scale:{scale}'):
-                # if not pix in gs_dict:
-                #     continue
-                if not pix in SPEI_spatial_dict:
-                    continue
-                # gs = gs_dict[pix]
-                ndvi = NDVI_spatial_dict[pix]
-                spei = SPEI_spatial_dict[pix]
-                gs = list(gs)
-                # ndvi_annual = T.monthly_vals_to_annual_val(ndvi,gs)
-                # spei_annual = T.monthly_vals_to_annual_val(spei,gs)
-                ndvi_gs = T.pick_gs_monthly_data(ndvi, gs)
-                spei_gs = T.pick_gs_monthly_data(spei, gs)
-                # r,p = T.lag_correlation(spei_annual,ndvi_annual,0,method='spearman')
-                r, p = T.lag_correlation(spei_gs, ndvi_gs, 0, method='spearman')
-                correlation_spatial_dict[pix] = r
-            key = '{}'.format(scale)
-            dict_all[key] = correlation_spatial_dict
-        df = T.spatial_dics_to_df(dict_all)
-        T.save_df(df, outf)
-        T.df_to_excel(df, outf)
-
-    def NDVI_SPEI_max_scale_only_scale(self):
-        outdir = join(self.this_class_tif, 'NDVI_SPEI_max_scale_only_scale')
-        T.mk_dir(outdir)
-        dff = join(self.this_class_arr, 'NDVI_SPEI_correlation_only_scale', 'NDVI_SPEI_correlation.df')
-        df = T.load_df(dff)
-        # df = df.dropna()
-        cols = df.columns.tolist()
-        cols.remove('pix')
-        # exit()
-        max_r = []
-        max_scale_list = []
-        for i, row in tqdm(df.iterrows(), total=len(df)):
-            dict_i = {}
-            for col in cols:
-                dict_i[col] = row[col]
-            scale = T.get_max_key_from_dict(dict_i)
-            r = dict_i[scale]
-
-            scale = scale.replace('spei', '')
-            scale = int(scale)
-            max_scale_list.append(scale)
-            max_r.append(r)
-        df['max_r'] = max_r
-        df['max_scale'] = max_scale_list
-
-        spatial_dict_r = T.df_to_spatial_dic(df, 'max_r')
-        spatial_dict_scale = T.df_to_spatial_dic(df, 'max_scale')
-
-        outf_r = join(outdir, 'max_r.tif')
-        outf_scale = join(outdir, 'max_scale.tif')
-        DIC_and_TIF().pix_dic_to_tif(spatial_dict_r, outf_r)
-        DIC_and_TIF().pix_dic_to_tif(spatial_dict_scale, outf_scale)
-
-    def NDVI_SPEI_correlation_every_scale_and_month(self):
-        import preprocess
-        outdir = join(self.this_class_arr, 'NDVI_SPEI_correlation_every_scale_and_month')
-        T.mk_dir(outdir)
-        NDVI_monthly_dir = join(preprocess.GIMMS_NDVI().datadir, 'every_month', global_year_range)
-        SPEI_monthly_dir = join(preprocess.SPEI().datadir, 'every_month', global_year_range)
-
-        params_list = []
-        for scale in T.listdir(SPEI_monthly_dir):
-            fdir_i = join(SPEI_monthly_dir, scale)
-            for f in T.listdir(fdir_i):
-                params = [f, scale, outdir, NDVI_monthly_dir, fdir_i]
-                # self.kernel_correlation(params)
-                params_list.append(params)
-        MULTIPROCESS(self.kernel_correlation, params_list).run(process=7)
-
-    def kernel_correlation(self, param):
-        f, scale, outdir, NDVI_monthly_dir, fdir_i = param
-        mon = f.split('.')[0]
-        outfname = f'{scale}_{mon}.npy'
-        outf = join(outdir, outfname)
-        spei_f = join(fdir_i, f)
-        ndvi_f = join(NDVI_monthly_dir, mon + '.npy')
-        spei_dict = T.load_npy(spei_f)
-        ndvi_dict = T.load_npy(ndvi_f)
-        corr_dict = {}
-        for pix in spei_dict:
-            if not pix in ndvi_dict:
+    def tif_offset(self):
+        fdir = join(data_root, 'MAT_MAP')
+        for f in T.listdir(fdir):
+            if not f.endswith('tif'):
                 continue
-            spei = spei_dict[pix]
-            ndvi = ndvi_dict[pix]
-            # r, p = T.nan_correlation(spei, ndvi, method='spearman')
-            r, p = T.nan_correlation(spei, ndvi, method='pearson')
-            corr_dict[pix] = r
-        T.save_npy(corr_dict, outf)
+            fpath = join(fdir, f)
+            spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
+            DIC_and_TIF().pix_dic_to_tif(spatial_dict, fpath)
         pass
 
-    def compose_scale_month_to_df(self):
-        fdir = join(self.this_class_arr, 'NDVI_SPEI_correlation_every_scale_and_month', 'pearson')
-        outdir = join(self.this_class_arr, 'compose_scale_month_to_df', 'pearson')
-        T.mk_dir(outdir, force=True)
-        all_spatial_dict = {}
-        for f in tqdm(T.listdir(fdir), desc='loading'):
-            scale = f.split('_')[0]
-            mon = f.split('_')[1].split('.')[0]
-            scale = scale.replace('spei', '')
-            key = f'{scale}_{mon}'
-            spatial_dict = T.load_npy(join(fdir, f))
-            all_spatial_dict[key] = spatial_dict
-        df = T.spatial_dics_to_df(all_spatial_dict)
-        outf = join(outdir, 'dataframe.df')
-        T.save_df(df, outf)
-        T.df_to_excel(df, outf)
-
-    def max_scale_and_month(self):
-        # method = 'pearson'
-        method = 'spearman'
-        valid_mon_list = ['04', '05', '06', '07', '08', '09', '10']
-        valid_mon_list = set(valid_mon_list)
-        outdir = join(self.this_class_tif, 'max_scale_and_month', method)
-        T.mk_dir(outdir, force=True)
-        dff = join(self.this_class_arr, 'compose_scale_month_to_df', method, 'dataframe.df')
-        df = T.load_df(dff)
-        cols = df.columns.tolist()
-        cols.remove('pix')
-        max_scale_dict = {}
-        max_month_dict = {}
-        max_r = {}
-        for i, row in tqdm(df.iterrows(), total=len(df)):
-            pix = row.pix
-            dict_i = {}
-            for col in cols:
-                scale, mon = col.split('_')
-                if not mon in valid_mon_list:
-                    continue
-                val = row[col]
-                if np.isnan(val):
-                    continue
-                # val = abs(val)
-                dict_i[col] = val
-            if len(dict_i) == 0:
-                continue
-            max_key = T.get_max_key_from_dict(dict_i)
-            r = dict_i[max_key]
-            scale, mon = max_key.split('_')
-            scale = int(scale)
-            mon = int(mon)
-            max_scale_dict[pix] = scale
-            max_month_dict[pix] = mon
-            max_r[pix] = r
-        outf_max_scale = join(outdir, f'{method}_max_scale.tif')
-        outf_max_month = join(outdir, f'{method}_max_month.tif')
-        outf_max_r = join(outdir, f'{method}_max_r.tif')
-        DIC_and_TIF().pix_dic_to_tif(max_scale_dict, outf_max_scale)
-        DIC_and_TIF().pix_dic_to_tif(max_month_dict, outf_max_month)
-        DIC_and_TIF().pix_dic_to_tif(max_r, outf_max_r)
-
-    def scale_lag_bivariate_plot(self):
-        outdir = join(self.this_class_tif, 'scale_lag_bivariate_plot')
+    def plot_png(self):
+        fdir = join(data_root,'MAT_MAP')
+        outdir = join(self.this_class_png,'MAT_MAP')
         T.mk_dir(outdir)
-        outf = join(outdir, 'spei_lag.tif')
-        scale_tif = join(self.this_class_tif, 'NDVI_SPEI_max_scale', 'max_scale.tif')
-        lag_tif = join(self.this_class_tif, 'NDVI_SPEI_max_scale', 'max_lag.tif')
-        tif1 = scale_tif
-        tif2 = lag_tif
-        tif1_label = 'SPEI scale'
-        tif2_label = 'response lag'
-        min1, max1 = 1, 12
-        min2, max2 = 0, 4
-        xymap.Bivariate_plot().plot_bivariate_map(tif1, tif2, tif1_label, tif2_label, min1, max1, min2, max2, outf,
-                                                  n=(5, 5), n_legend=(5, 5), zcmap=None, legend_title='')
+        T.open_path_and_file(outdir)
+        outf = join(outdir,'MAT_MAP.jpg')
+        mat_path = join(fdir,'MAT.tif')
+        map_path = join(fdir,'MAP.tif')
+        plt.figure(figsize=(8, 5))
+        ax = plt.subplot(1, 2, 1)
+        m,ret = Plot().plot_ortho(mat_path, vmin=-10, vmax=20, ax=ax, cmap=global_cmap_r)
+        m.colorbar(ret,location='bottom')
+        ax.set_title('MAT')
+
+        ax = plt.subplot(1, 2, 2)
+        m,ret = Plot().plot_ortho(map_path, vmin=0, vmax=1000, ax=ax, cmap=global_cmap)
+        m.colorbar(ret,location='bottom')
+        ax.set_title('MAP')
+        plt.tight_layout()
+        # plt.show()
+        plt.savefig(outf, dpi=600)
+        plt.close()
+        pass
 
 
-class Max_Scale_and_Lag_correlation_SPI:
-    # max scale: only multiple scale SPI vs NDVI
-    # max lag: multiple scale SPI and multiple lag vs NDVI
+class Isohydricity:
+
     def __init__(self):
         self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir(
-            'Max_Scale_and_Lag_correlation_SPI',
+            'Isohydricity',
             result_root_this_script, mode=2)
         pass
 
     def run(self):
-        # individual max scale
-        # self.NDVI_SPI_correlation_every_scale_and_month()
-        # self.compose_scale_month_to_df()
-        # self.max_scale_and_month()
-
-        # individual max lag based on max scale
-        ###### with issue
-        # self.lag_corr_depends_on_max_scale_and_month()
-        # self.max_lag()
-
-        # corresponding max scale, month, and max
-        # self.NDVI_SPI_correlation_every_scale_month_and_lag()
-        # self.compose_scale_month_lag_to_df()
-        # self.max_scale_month_lag()
-
-        # mean max scale, month, and max
-        self.mean_max_scale_month_lag()
-
-        # self.scale_lag_bivariate_plot()
+        # self.tif_offset()
+        self.plot_png()
         pass
 
-    def NDVI_SPI_correlation_every_scale_and_month(self):
-        import preprocess
-        outdir = join(self.this_class_arr, 'NDVI_SPI_correlation_every_scale_and_month')
+    def tif_offset(self):
+        fpath = join(data_root, 'ISO_Hydro/tif_all_year/ISO_Hydricity.tif')
+        spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
+        DIC_and_TIF().pix_dic_to_tif(spatial_dict, fpath)
+        pass
+
+    def plot_png(self):
+        fpath = join(data_root, 'ISO_Hydro/tif_all_year/ISO_Hydricity.tif')
+        outdir = join(self.this_class_png,'ISO_Hydro')
         T.mk_dir(outdir)
-        NDVI_monthly_dir = join(preprocess.GIMMS_NDVI().datadir, 'every_month', global_year_range)
-        SPEI_monthly_dir = join(preprocess.SPI().datadir, 'every_month', global_year_range)
-
-        params_list = []
-        for scale in T.listdir(SPEI_monthly_dir):
-            fdir_i = join(SPEI_monthly_dir, scale)
-            for f in T.listdir(fdir_i):
-                params = [f, scale, outdir, NDVI_monthly_dir, fdir_i]
-                # self.kernel_correlation(params)
-                params_list.append(params)
-        MULTIPROCESS(self.kernel_correlation, params_list).run(process=7)
-
-    def kernel_correlation(self, param):
-        f, scale, outdir, NDVI_monthly_dir, fdir_i = param
-        mon = f.split('.')[0]
-        outfname = f'{scale}_{mon}.npy'
-        outf = join(outdir, outfname)
-        SPI_f = join(fdir_i, f)
-        ndvi_f = join(NDVI_monthly_dir, mon + '.npy')
-        SPI_dict = T.load_npy(SPI_f)
-        ndvi_dict = T.load_npy(ndvi_f)
-        corr_dict = {}
-        for pix in SPI_dict:
-            if not pix in ndvi_dict:
-                continue
-            SPI = SPI_dict[pix]
-            ndvi = ndvi_dict[pix]
-            r, p = T.nan_correlation(SPI, ndvi, method='spearman')
-            # r, p = T.nan_correlation(SPI, ndvi, method='pearson')
-            corr_dict[pix] = r
-        T.save_npy(corr_dict, outf)
+        T.open_path_and_file(outdir)
+        outf = join(outdir,'ISO_Hydricity.jpg')
+        plt.figure(figsize=(5, 5))
+        ax = plt.subplot(1, 1, 1)
+        m,ret = Plot().plot_ortho(fpath, vmin=0.3, vmax=1.3, ax=ax, cmap=global_cmap_r)
+        m.colorbar(ret,location='bottom')
+        ax.set_title('ISO_Hydricity')
+        plt.savefig(outf, dpi=600)
+        plt.close()
         pass
 
-    def compose_scale_month_to_df(self):
-        # method = 'spearman'
-        method = 'pearson'
-        fdir = join(self.this_class_arr, 'NDVI_SPI_correlation_every_scale_and_month', method)
-        outdir = join(self.this_class_arr, 'compose_scale_month_to_df', method)
-        T.mk_dir(outdir, force=True)
-        all_spatial_dict = {}
-        for f in tqdm(T.listdir(fdir), desc='loading'):
-            scale = f.split('_')[0]
-            mon = f.split('_')[1].split('.')[0]
-            scale = scale.replace('spi', '')
-            key = f'{scale}_{mon}'
-            spatial_dict = T.load_npy(join(fdir, f))
-            all_spatial_dict[key] = spatial_dict
-        df = T.spatial_dics_to_df(all_spatial_dict)
-        outf = join(outdir, 'dataframe.df')
-        T.save_df(df, outf)
-        T.df_to_excel(df, outf)
+class Aridity_index:
 
-    def max_scale_and_month(self):
-        method = 'pearson'
-        # method = 'spearman'
-        valid_mon_list = ['04', '05', '06', '07', '08', '09', '10']
-        valid_mon_list = set(valid_mon_list)
-        outdir = join(self.this_class_tif, 'max_scale_and_month', method)
-        T.mk_dir(outdir, force=True)
-        dff = join(self.this_class_arr, 'compose_scale_month_to_df', method, 'dataframe.df')
-        df = T.load_df(dff)
-        cols = df.columns.tolist()
-        cols.remove('pix')
-        max_scale_dict = {}
-        max_month_dict = {}
-        max_r = {}
-        for i, row in tqdm(df.iterrows(), total=len(df)):
-            pix = row.pix
-            dict_i = {}
-            for col in cols:
-                scale, mon = col.split('_')
-                if not mon in valid_mon_list:
-                    continue
-                val = row[col]
-                if np.isnan(val):
-                    continue
-                # val = abs(val)
-                dict_i[col] = val
-            if len(dict_i) == 0:
-                continue
-            max_key = T.get_max_key_from_dict(dict_i)
-            r = dict_i[max_key]
-            scale, mon = max_key.split('_')
-            scale = int(scale)
-            mon = int(mon)
-            max_scale_dict[pix] = scale
-            max_month_dict[pix] = mon
-            max_r[pix] = r
-        outf_max_scale = join(outdir, f'{method}_max_scale.tif')
-        outf_max_month = join(outdir, f'{method}_max_month.tif')
-        outf_max_r = join(outdir, f'{method}_max_r.tif')
-        DIC_and_TIF().pix_dic_to_tif(max_scale_dict, outf_max_scale)
-        DIC_and_TIF().pix_dic_to_tif(max_month_dict, outf_max_month)
-        DIC_and_TIF().pix_dic_to_tif(max_r, outf_max_r)
-
-    def lag_corr_depends_on_max_scale_and_month(self):
-        method = 'pearson'
-        spi_month_dict = self.__spi_scale_and_month_dict()
-        ndvi_month_dict = self.__ndvi_scale_and_month_dict()
-        outdir = join(self.this_class_arr, 'lag_corr_depends_on_max_scale_and_month')
-        # NDVI_monthly_dir = join(preprocess.GIMMS_NDVI().datadir,'every_month',global_year_range)
-        # SPI_monthly_dir = join(preprocess.SPI().datadir,'every_month',global_year_range)
-        T.mk_dir(outdir, force=True)
-        outf = join(outdir, f'{method}_lag_corr.df')
-        max_scale_f = join(self.this_class_tif, 'max_scale_and_month', method, f'{method}_max_scale.tif')
-        max_month_f = join(self.this_class_tif, 'max_scale_and_month', method, f'{method}_max_month.tif')
-        max_scale_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(max_scale_f)
-        max_month_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(max_month_f)
-        lag_list = list(range(5))
-
-        all_dict = {}
-        for lag in lag_list:
-            corr_spatial_dict = {}
-            for pix in tqdm(max_month_spatial_dict, desc=f'lag {lag}'):
-                max_scale = max_scale_spatial_dict[pix]
-                max_month = max_month_spatial_dict[pix]
-                if np.isnan(max_scale) or np.isnan(max_month):
-                    continue
-                max_scale = int(max_scale)
-                max_month = int(max_month)
-                spi_key = f'{max_scale:02d}_{max_month:02d}'
-                ndvi_key = f'{max_month:02d}'
-                spi_value = spi_month_dict[spi_key][pix]
-                ndvi_value = ndvi_month_dict[ndvi_key][pix]
-                r, p = T.lag_correlation(spi_value, ndvi_value, lag, method=method)
-                corr_spatial_dict[pix] = r
-            all_dict[lag] = corr_spatial_dict
-        df = T.spatial_dics_to_df(all_dict)
-        T.save_df(df, outf)
-        T.df_to_excel(df, outf)
-
-    def max_lag(self):
-        method = 'pearson'
-        outdir = join(self.this_class_tif, 'max_lag', method)
-        T.mk_dir(outdir, force=True)
-        dff = join(self.this_class_arr, 'lag_corr_depends_on_max_scale_and_month', f'{method}_lag_corr.df')
-        df = T.load_df(dff)
-        cols = df.columns.tolist()
-        cols.remove('pix')
-        max_lag_dict = {}
-        max_r = {}
-        for i, row in tqdm(df.iterrows(), total=len(df)):
-            pix = row.pix
-            dict_i = {}
-            for col in cols:
-                val = row[col]
-                if np.isnan(val):
-                    continue
-                dict_i[col] = val
-            if len(dict_i) == 0:
-                continue
-            max_key = T.get_max_key_from_dict(dict_i)
-            r = dict_i[max_key]
-            lag = int(max_key)
-            max_lag_dict[pix] = lag
-            max_r[pix] = r
-        outf_max_lag = join(outdir, f'{method}_max_lag.tif')
-        outf_max_r = join(outdir, f'{method}_max_r.tif')
-        DIC_and_TIF().pix_dic_to_tif(max_lag_dict, outf_max_lag)
-        DIC_and_TIF().pix_dic_to_tif(max_r, outf_max_r)
-
-    def lag_corr_depends_on_max_scale_and_monthsss(self):
-        import preprocess
-        method = 'pearson'
-        spi_month_dict = self.__spi_scale_and_month_dict()
-        ndvi_month_dict = self.__ndvi_scale_and_month_dict()
-        outdir = join(self.this_class_arr, 'lag_corr_depends_on_max_scale_and_month')
-        NDVI_monthly_dir = join(preprocess.GIMMS_NDVI().datadir, 'every_month', global_year_range)
-        SPI_monthly_dir = join(preprocess.SPI().datadir, 'every_month', global_year_range)
-        T.mk_dir(outdir, force=True)
-        outf = join(outdir, f'{method}_lag_corr.df')
-        max_scale_f = join(self.this_class_tif, 'max_scale_and_month', method, f'{method}_max_scale.tif')
-        max_month_f = join(self.this_class_tif, 'max_scale_and_month', method, f'{method}_max_month.tif')
-        max_scale_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(max_scale_f)
-        max_month_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(max_month_f)
-        lag_list = list(range(5))
-
-        all_dict = {}
-        for lag in lag_list:
-            corr_spatial_dict = {}
-            for pix in tqdm(max_month_spatial_dict, desc=f'lag {lag}'):
-                max_scale = max_scale_spatial_dict[pix]
-                max_month = max_month_spatial_dict[pix]
-                if np.isnan(max_scale) or np.isnan(max_month):
-                    continue
-                max_scale = int(max_scale)
-                max_month = int(max_month)
-                spi_key = f'{max_scale:02d}_{max_month:02d}'
-                ndvi_key = f'{max_month:02d}'
-                spi_value = spi_month_dict[spi_key][pix]
-                ndvi_value = ndvi_month_dict[ndvi_key][pix]
-                r, p = T.lag_correlation(spi_value, ndvi_value, lag, method=method)
-                corr_spatial_dict[pix] = r
-            all_dict[lag] = corr_spatial_dict
-        df = T.spatial_dics_to_df(all_dict)
-        T.save_df(df, outf)
-        T.df_to_excel(df, outf)
-
-    def NDVI_SPI_correlation_every_scale_month_and_lag(self):
-        import preprocess
-        method = 'spearman'
-        # method = 'pearson'
-        outdir = join(self.this_class_arr, 'NDVI_SPI_correlation_every_scale_month_and_lag', method)
-        T.mk_dir(outdir, force=True)
-        NDVI_monthly_dir = join(preprocess.GIMMS_NDVI().datadir, 'every_month', global_year_range)
-        SPEI_monthly_dir = join(preprocess.SPI().datadir, 'every_month', global_year_range)
-        lag_list = list(range(5))
-        params_list = []
-        for scale in T.listdir(SPEI_monthly_dir):
-            fdir_i = join(SPEI_monthly_dir, scale)
-            for f in T.listdir(fdir_i):
-                for lag in lag_list:
-                    param = [f, scale, lag, outdir, fdir_i, NDVI_monthly_dir, method]
-                    params_list.append(param)
-                    # self.kernel_NDVI_SPI_correlation_every_scale_month_and_lag(param)
-        MULTIPROCESS(self.kernel_NDVI_SPI_correlation_every_scale_month_and_lag, params_list).run(process=7)
-
-    def kernel_NDVI_SPI_correlation_every_scale_month_and_lag(self, param):
-        f, scale, lag, outdir, fdir_i, NDVI_monthly_dir, method = param
-        mon = f.split('.')[0]
-        outfname = f'{scale}_{mon}_lag{lag}.npy'
-        outf = join(outdir, outfname)
-        SPI_f = join(fdir_i, f)
-        ndvi_f = join(NDVI_monthly_dir, mon + '.npy')
-        SPI_dict = T.load_npy(SPI_f)
-        ndvi_dict = T.load_npy(ndvi_f)
-        corr_dict = {}
-        for pix in SPI_dict:
-            if not pix in ndvi_dict:
-                continue
-            SPI = SPI_dict[pix]
-            ndvi = ndvi_dict[pix]
-            r, p = T.lag_correlation(SPI, ndvi, lag, method=method)
-            corr_dict[pix] = r
-        T.save_npy(corr_dict, outf)
-
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir(
+            'Aridity_index',
+            result_root_this_script, mode=2)
         pass
 
-    def compose_scale_month_lag_to_df(self):
-        method = 'spearman'
-        # method = 'pearson'
-        fdir = join(self.this_class_arr, 'NDVI_SPI_correlation_every_scale_month_and_lag', method)
-        outdir = join(self.this_class_arr, 'compose_scale_month_lag_to_df', method)
-        T.mk_dir(outdir, force=True)
-        all_spatial_dict = {}
-        for f in tqdm(T.listdir(fdir), desc='loading'):
-            scale = f.split('_')[0]
-            mon = f.split('_')[1]
-            lag = f.split('_')[2].split('.')[0]
-            scale = scale.replace('spi', '')
-            lag = lag.replace('lag', '')
-            key = f'{scale}_{mon}_{lag}'
-            spatial_dict = T.load_npy(join(fdir, f))
-            all_spatial_dict[key] = spatial_dict
-        df = T.spatial_dics_to_df(all_spatial_dict)
-        outf = join(outdir, 'dataframe.df')
-        T.save_df(df, outf)
-        T.df_to_excel(df, outf)
+    def run(self):
+        # self.tif_offset()
+        self.plot_png()
+        pass
 
-    def max_scale_month_lag(self):
-        # method = 'pearson'
-        method = 'spearman'
-        valid_mon_list = ['04', '05', '06', '07', '08', '09', '10', '11']
-        valid_mon_list = set(valid_mon_list)
-        # valid_scale_list = list(range(1,13))
-        valid_scale_list = list(range(1, 25))
-        valid_scale_list = [f'{i:02d}' for i in valid_scale_list]
-        outdir = join(self.this_class_tif, 'max_scale_month_lag', method)
-        T.mk_dir(outdir, force=True)
-        dff = join(self.this_class_arr, 'compose_scale_month_lag_to_df', method, 'dataframe.df')
-        print('loading', dff)
-        df = T.load_df(dff)
-        print('loaded')
-        # exit()
-        cols = df.columns.tolist()
-        cols.remove('pix')
-        max_scale_dict = {}
-        max_month_dict = {}
-        max_lag_dict = {}
-        max_r = {}
-        for i, row in tqdm(df.iterrows(), total=len(df)):
-            pix = row.pix
-            dict_i = {}
-            for col in cols:
-                scale, mon, lag = col.split('_')
-                if not mon in valid_mon_list:
-                    continue
-                if not scale in valid_scale_list:
-                    continue
-                val = row[col]
-                if np.isnan(val):
-                    continue
-                # val = abs(val)
-                dict_i[col] = val
-            if len(dict_i) == 0:
-                continue
-            max_key = T.get_max_key_from_dict(dict_i)
-            r = dict_i[max_key]
-            scale, mon, lag = max_key.split('_')
-            scale = int(scale)
-            mon = int(mon)
-            lag = int(lag)
-            max_scale_dict[pix] = scale
-            max_month_dict[pix] = mon
-            max_lag_dict[pix] = lag
-            max_r[pix] = r
-        outf_max_scale = join(outdir, f'{method}_max_scale.tif')
-        outf_max_month = join(outdir, f'{method}_max_month.tif')
-        outf_max_lag = join(outdir, f'{method}_max_lag.tif')
-        outf_max_r = join(outdir, f'{method}_max_r.tif')
-        DIC_and_TIF().pix_dic_to_tif(max_scale_dict, outf_max_scale)
-        DIC_and_TIF().pix_dic_to_tif(max_month_dict, outf_max_month)
-        DIC_and_TIF().pix_dic_to_tif(max_lag_dict, outf_max_lag)
-        DIC_and_TIF().pix_dic_to_tif(max_r, outf_max_r)
+    def tif_offset(self):
+        fpath = join(data_root, 'Aridity_Index/aridity_index.tif.tif')
+        spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
+        DIC_and_TIF().pix_dic_to_tif(spatial_dict, fpath)
+        pass
 
-    def mean_max_scale_month_lag(self):
-        # method = 'pearson'
-        method = 'spearman'
-        # valid_mon_list = ['04','05','06','07','08','09','10','11']
-        # valid_mon_list = set(valid_mon_list)
-        # valid_scale_list = list(range(1,13))
-        valid_scale_list = list(range(1, 25))
-        valid_scale_list = [f'{i:02d}' for i in valid_scale_list]
-        outdir = join(self.this_class_tif, 'mean_max_scale_month_lag', method)
-        T.mk_dir(outdir, force=True)
-        dff = join(self.this_class_arr, 'compose_scale_month_lag_to_df', method, 'dataframe.df')
-        print('loading', dff)
-        df = T.load_df(dff)
-        print('loaded')
-        cols = df.columns.tolist()
-        cols.remove('pix')
-        max_scale_dict = {}
-        max_month_dict = {}
-        max_lag_dict = {}
-        max_r_dict = {}
-        for i, row in tqdm(df.iterrows(), total=len(df)):
-            pix = row.pix
-            dict_i = {}
-            for col in cols:
-                scale, mon, lag = col.split('_')
-                # if not mon in valid_mon_list:
-                #     continue
-                if not scale in valid_scale_list:
-                    continue
-                val = row[col]
-                if np.isnan(val):
-                    continue
-                # val = abs(val)
-                dict_i[col] = val
-            if len(dict_i) == 0:
-                continue
-            # print(dict_i)
-            scale_dict = {}
-            month_dict = {}
-            lag_dict = {}
-            for key in dict_i:
-                scale, mon, lag = key.split('_')
-                val = dict_i[key]
-                if not scale in scale_dict:
-                    scale_dict[scale] = []
-                scale_dict[scale].append(val)
-                if not mon in month_dict:
-                    month_dict[mon] = []
-                month_dict[mon].append(val)
-                if not lag in lag_dict:
-                    lag_dict[lag] = []
-                lag_dict[lag].append(val)
-            lag_mean_dict = {}
-            for lag in lag_dict:
-                lag_mean_dict[lag] = np.mean(lag_dict[lag])
-            max_lag = T.get_max_key_from_dict(lag_mean_dict)
-
-            month_mean_dict = {}
-            for mon in month_dict:
-                month_mean_dict[mon] = np.mean(month_dict[mon])
-            max_mon = T.get_max_key_from_dict(month_mean_dict)
-
-            scale_mean_dict = {}
-            for scale in scale_dict:
-                scale_mean_dict[scale] = np.mean(scale_dict[scale])
-            max_scale = T.get_max_key_from_dict(scale_mean_dict)
-
-            # print(max_scale,max_mon,max_lag)
-            max_scale = int(max_scale)
-            max_mon = int(max_mon)
-            max_lag = int(max_lag)
-            # r = lag_mean_dict[max_lag]
-
-            max_scale_dict[pix] = max_scale
-            max_month_dict[pix] = max_mon
-            max_lag_dict[pix] = max_lag
-            r_list = row[cols].tolist()
-            max_r = np.nanmax(r_list)
-            max_r_dict[pix] = max_r
-        outf_max_scale = join(outdir, f'{method}_max_scale.tif')
-        outf_max_month = join(outdir, f'{method}_max_month.tif')
-        outf_max_lag = join(outdir, f'{method}_max_lag.tif')
-        outf_max_r = join(outdir, f'{method}_max_r.tif')
-        DIC_and_TIF().pix_dic_to_tif(max_scale_dict, outf_max_scale)
-        DIC_and_TIF().pix_dic_to_tif(max_month_dict, outf_max_month)
-        DIC_and_TIF().pix_dic_to_tif(max_lag_dict, outf_max_lag)
-        DIC_and_TIF().pix_dic_to_tif(max_r_dict, outf_max_r)
-
-    def __spi_scale_and_month_dict(self):
-        import preprocess
-        fdir = join(preprocess.SPI().datadir, 'every_month', global_year_range)
-        all_spatial_dict = {}
-        for folder in tqdm(T.listdir(fdir), desc='loading SPI'):
-            scale = folder.replace('spi', '')
-            for f in T.listdir(join(fdir, folder)):
-                mon = f.split('.')[0]
-                key = f'{scale}_{mon}'
-                spatial_dict = T.load_npy(join(fdir, folder, f))
-                all_spatial_dict[key] = spatial_dict
-        return all_spatial_dict
-
-    def __ndvi_scale_and_month_dict(self):
-        import preprocess
-        fdir = join(preprocess.GIMMS_NDVI().datadir, 'every_month', global_year_range)
-        all_spatial_dict = {}
-        for f in tqdm(T.listdir(join(fdir)), desc='loading NDVI'):
-            mon = f.split('.')[0]
-            key = f'{mon}'
-            spatial_dict = T.load_npy(join(fdir, f))
-            all_spatial_dict[key] = spatial_dict
-        return all_spatial_dict
-
-    def scale_lag_bivariate_plot(self):
-        outdir = join(self.this_class_tif, 'scale_lag_bivariate_plot')
+    def plot_png(self):
+        fpath = join(data_root, 'Aridity_Index/aridity_index.tif')
+        outdir = join(self.this_class_png,'Aridity_Index')
         T.mk_dir(outdir)
-        outf = join(outdir, 'SPI_lag.tif')
-        scale_tif = join(self.this_class_tif, 'NDVI_SPI_max_scale', 'max_scale.tif')
-        lag_tif = join(self.this_class_tif, 'NDVI_SPI_max_scale', 'max_lag.tif')
-        tif1 = scale_tif
-        tif2 = lag_tif
-        tif1_label = 'SPI scale'
-        tif2_label = 'response lag'
-        min1, max1 = 1, 12
-        min2, max2 = 0, 4
-        xymap.Bivariate_plot().plot_bivariate_map(tif1, tif2, tif1_label, tif2_label, min1, max1, min2, max2, outf,
-                                                  n=(5, 5), n_legend=(5, 5), zcmap=None, legend_title='')
-
-
+        T.open_path_and_file(outdir)
+        outf = join(outdir,'Aridity_Index.jpg')
+        plt.figure(figsize=(5, 5))
+        ax = plt.subplot(1, 1, 1)
+        m,ret = Plot().plot_ortho(fpath, vmin=0, vmax=1.3, ax=ax, cmap=global_cmap)
+        m.colorbar(ret,location='bottom')
+        ax.set_title('Aridity_Index')
+        plt.savefig(outf, dpi=600)
+        plt.close()
+        pass
 
 def line_to_shp(inputlist, outSHPfn):
     ############重要#################
@@ -1445,10 +808,9 @@ def main():
     # Growing_season().run()
     # VIs_and_SPEI_correlation().run()
     VIs_and_SPEI_lag_correlation().run()
-    # Max_Scale_and_Lag_correlation_SPEI().run()
-    # Max_Scale_and_Lag_correlation_SPI().run()
-    # Pick_Drought_Events().run()
-    # Resistance_Resilience().run()
+    # MAT_MAP().run()
+    # Isohydricity().run()
+    # Aridity_index().run()
 
     # gen_world_grid_shp()
     pass

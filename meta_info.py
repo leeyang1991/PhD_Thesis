@@ -161,50 +161,34 @@ class Meta_information:
         return spatial_dict
 
 
-class Ortho_reprojection:
+class Load_dataframe:
 
     def __init__(self):
+
         pass
 
-    def ortho_wkt(self):
-        wkt = '''
-        PROJCRS["North_Pole_Orthographic",
-    BASEGEOGCRS["WGS 84",
-        DATUM["World Geodetic System 1984",
-            ELLIPSOID["WGS 84",6378137,298.257223563,
-                LENGTHUNIT["metre",1]]],
-        PRIMEM["Greenwich",0,
-            ANGLEUNIT["Degree",0.0174532925199433]]],
-    CONVERSION["North_Pole_Orthographic",
-        METHOD["Orthographic (Spherical)"],
-        PARAMETER["Latitude of natural origin",90,
-            ANGLEUNIT["Degree",0.0174532925199433],
-            ID["EPSG",8801]],
-        PARAMETER["Longitude of natural origin",0,
-            ANGLEUNIT["Degree",0.0174532925199433],
-            ID["EPSG",8802]],
-        PARAMETER["False easting",0,
-            LENGTHUNIT["metre",1],
-            ID["EPSG",8806]],
-        PARAMETER["False northing",0,
-            LENGTHUNIT["metre",1],
-            ID["EPSG",8807]]],
-    CS[Cartesian,2],
-        AXIS["(E)",east,
-            ORDER[1],
-            LENGTHUNIT["metre",1]],
-        AXIS["(N)",north,
-            ORDER[2],
-            LENGTHUNIT["metre",1]],
-    USAGE[
-        SCOPE["Not known."],
-        AREA["Northern hemisphere."],
-        BBOX[0,-180,90,180]],
-    ID["ESRI",102035]]'''
-        return wkt
+    def load_chapter3(self):
+        from Chapter3 import statistic
+        dff = statistic.Dataframe().dff
+        df = T.load_df(dff)
+        df = df[df['lat'] > 30]
+        df = df[df['aridity_index'] < 3]
+        df = df[df['MAP'] < 1500]
+        df = df[df['ISO_Hydricity'] < 1.5]
+        df = df[df['ISO_Hydricity'] > 0]
+        return df
 
-    def reproj(self,fpath,outf):
-        wkt = self.ortho_wkt()
-        srs = DIC_and_TIF().gen_srs_from_wkt(wkt)
-        ToRaster().resample_reproj(fpath, outf, 50000, dstSRS=srs)
+    def load_chapter4(self):
+        from Chapter4 import statistic
+        raise NotImplementedError
+        # dff = statistic.Dataframe().dff
+        # df = T.load_df(dff)
+        pass
+
+    def load_chapter5(self):
+        from Chapter5 import statistic
+        raise NotImplementedError
+        # dff = statistic.Dataframe().dff
+        # df = T.load_df(dff)
+        pass
 
