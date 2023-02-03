@@ -821,10 +821,63 @@ class Isohydricity:
 class Latitude:
 
     def __init__(self):
-
+        self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir(
+            'Latitude',
+            result_root_this_script, mode=2)
         pass
 
     def run(self):
+        self.plot_line()
+        pass
+
+    def plot_line(self):
+        outdir = join(self.this_class_png, 'matrix')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+        df = Load_dataframe().load_chapter3()
+        VIs_list = global_VIs_list
+        y_lim_dict = {
+            '_max_lag': (0, 6),
+            '_max_r': (-0.2, 0.6),
+            '_max_scale': (0, 24),
+
+        }
+
+        suffix_list = ['_max_lag','_max_r','_max_scale']
+        lag_bins = np.arange(30, 90, 1)
+        for suffix in suffix_list:
+            plt.figure(figsize=(10, 3))
+            for VI in VIs_list:
+                col_z = f'{VI}{suffix}'
+                df_group,bins_list_str = T.df_bin(df,'lat',lag_bins)
+                y_list = []
+                err_list = []
+                x_list = []
+                for name,df_group_i in df_group:
+                    x_list.append(name.left)
+                    vals = df_group_i[col_z].tolist()
+                    mean = np.nanmean(vals)
+                    err,_,_ = T.uncertainty_err(vals)
+                    # err = np.nanstd(vals)
+                    # x_list.append(name)
+                    y_list.append(mean)
+                    err_list.append(err)
+                plt.plot(x_list,y_list,label=col_z)
+                plt.fill_between(x_list, np.array(y_list)-np.array(err_list), np.array(y_list)+np.array(err_list), alpha=0.5)
+                plt.xlabel('Latitude')
+                plt.ylabel(col_z)
+                plt.title(col_z)
+                plt.tight_layout()
+            plt.legend()
+            plt.grid()
+            plt.ylim(y_lim_dict[suffix])
+            outf = join(outdir, f'{suffix}.pdf')
+            plt.savefig(outf, dpi=600)
+            plt.close()
+            # plt.show()
+
+            pass
+
 
         pass
 
@@ -837,7 +890,8 @@ def main():
     # Dataframe().run()
     # Constant_value().run()
     # PFTs_and_koppen().run()
-    MAT_MAP().run()
+    # MAT_MAP().run()
+    Latitude().run()
     pass
 
 
