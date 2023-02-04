@@ -64,6 +64,10 @@ global_cmap_r = T.cmap_blend(color_list[::-1])
 global_spei_list = ['spei03', 'spei06', 'spei09', 'spei12',
                      'spei15','spei18', 'spei21', 'spei24',
                      ]
+global_all_spei_list = [
+    'spei01', 'spei02', 'spei03', 'spei04', 'spei05', 'spei06', 'spei07', 'spei08', 'spei09', 'spei10', 'spei11', 'spei12',
+    'spei13', 'spei14', 'spei15', 'spei16', 'spei17', 'spei18', 'spei19', 'spei20', 'spei21', 'spei22', 'spei23', 'spei24',
+                     ]
 global_lag_list = list(range(0, 7))
 
 

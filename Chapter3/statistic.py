@@ -791,22 +791,155 @@ class MAT_MAP:
 class ELI:
 
     def __init__(self):
-
+        self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir(
+            'ELI',
+            result_root_this_script, mode=2)
         pass
 
     def run(self):
+        self.plot_line()
+        pass
+
+    def plot_line(self):
+        outdir = join(self.this_class_png, 'line')
+        T.mk_dir(outdir)
+        # T.open_path_and_file(outdir)
+        df = Load_dataframe().load_chapter3()
+        VIs_list = global_VIs_list
+        y_lim_dict = {
+            '_max_lag': (0, 4),
+            '_max_r': (0, 0.7),
+            '_max_scale': (5, 20),
+        }
+
+        suffix_list = ['_max_lag', '_max_r', '_max_scale']
+        ELI_bins = np.arange(-0.8, 0.7, .05)
+        for suffix in suffix_list:
+            plt.figure(figsize=(6, 4))
+            for VI in VIs_list:
+                col_z = f'{VI}{suffix}'
+                df_group, bins_list_str = T.df_bin(df, 'ELI', ELI_bins)
+                y_list = []
+                err_list = []
+                x_list = []
+                for name, df_group_i in df_group:
+                    x_list.append(name.left)
+                    vals = df_group_i[col_z].tolist()
+                    mean = np.nanmean(vals)
+                    err, _, _ = T.uncertainty_err(vals)
+                    # err = np.nanstd(vals)
+                    # x_list.append(name)
+                    y_list.append(mean)
+                    err_list.append(err)
+                window_len = 5
+                y_list = SMOOTH().smooth_convolve(y_list,window_len)
+                err_list = SMOOTH().smooth_convolve(err_list,window_len)
+                plt.plot(x_list, y_list, label=col_z)
+                plt.fill_between(x_list, np.array(y_list) - np.array(err_list), np.array(y_list) + np.array(err_list),
+                                 alpha=0.5)
+                plt.xlabel('ELI')
+                # plt.ylabel(col_z)
+                # plt.title(col_z)
+                # plt.tight_layout()
+            plt.legend()
+            # plt.grid()
+            plt.ylim(y_lim_dict[suffix])
+            plt.twinx()
+            eli_vals = df['ELI'].values
+            x,y = Plot().plot_hist_smooth(eli_vals,range=(-0.8, 0.7),alpha=0,bins=100)
+            # plt.plot(x,y)
+            plt.fill_between(x, y, alpha=0.5,color='gray')
+
+            outf = join(outdir, f'{suffix}.pdf')
+            plt.savefig(outf, dpi=600)
+            plt.close()
+            # plt.show()
+
 
         pass
 
-class AI:
+class ELI_every_SPEI_scale:
 
     def __init__(self):
-
+        self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir(
+            'ELI_every_SPEI_scale',
+            result_root_this_script, mode=2)
         pass
 
     def run(self):
-
+        # self.dataframe()
+        self.matrix()
         pass
+
+    def dataframe(self):
+        from Chapter3 import analysis
+        outdir = join(self.this_class_arr, 'dataframe')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+        fdir = join(analysis.VIs_and_SPEI_correlation().this_class_tif,'correlation_tif')
+        VIs_list = global_VIs_list
+        for VI in VIs_list:
+            fdir_i = join(fdir,VI,'r')
+            all_spaital_dict = {}
+            for f in tqdm(T.listdir(fdir_i),desc=f'{VI}'):
+                if not f.endswith('.tif'):
+                    continue
+                fpath = join(fdir_i,f)
+                key = f.split('.')[0]
+                spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
+                all_spaital_dict[key] = spatial_dict
+            df = T.spatial_dics_to_df(all_spaital_dict)
+            df = Dataframe_func(df).df
+            outf = join(outdir,f'{VI}.df')
+            T.save_df(df,outf)
+            T.df_to_excel(df,outf)
+
+    def matrix(self):
+        fdir = join(self.this_class_arr, 'dataframe')
+        outdir = join(self.this_class_png, 'matrix')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+        VIs_list = global_VIs_list
+        spei_list = global_all_spei_list
+        ELI_col = 'ELI'
+        ELI_bin = np.arange(-0.8, 0.7, .05)
+        for VI in VIs_list:
+            fpath = join(fdir,f'{VI}.df')
+            df = T.load_df(fpath)
+            matrix = []
+            y_list = []
+            for scale in spei_list:
+                col = f'{VI}_{scale}_r'
+                df_group, bins_list_str = T.df_bin(df, ELI_col, ELI_bin)
+                z_list = []
+                x_list = []
+                y_list.append(scale)
+                for name, df_group_i in df_group:
+                    x_list.append(name.left)
+                    vals = df_group_i[col].tolist()
+                    mean = np.nanmean(vals)
+                    # err = np.nanstd(vals)
+                    z_list.append(mean)
+                matrix.append(z_list)
+            matrix = np.array(matrix)
+            plt.figure(figsize=(10, 3))
+            plt.imshow(matrix, cmap=global_cmap_r, aspect='auto',vmin=-0.1, vmax=0.5)
+            plt.colorbar()
+            plt.yticks(np.arange(len(y_list)), y_list)
+            plt.xticks(np.arange(len(x_list)), x_list)
+            plt.xlabel('ELI')
+            plt.ylabel('SPEI scale')
+            plt.title(VI)
+            plt.tight_layout()
+            outf = join(outdir, f'{VI}.pdf')
+            plt.savefig(outf, dpi=600)
+            plt.close()
+            # plt.show()
+
+
+
+
+
 
 class Isohydricity:
 
@@ -891,7 +1024,9 @@ def main():
     # Constant_value().run()
     # PFTs_and_koppen().run()
     # MAT_MAP().run()
-    Latitude().run()
+    # Latitude().run()
+    # ELI().run()
+    ELI_every_SPEI_scale().run()
     pass
 
 
