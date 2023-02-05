@@ -342,6 +342,147 @@ class SPEI_trend:
 
         pass
 
+class VIs_trend:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir(
+            'VIs_trend',
+            result_root_this_script, mode=2)
+        pass
+
+    def run(self):
+        # self.trend()
+        # self.plot_trend()
+        # self.dataframe_time_sereis()
+        self.plot_time_sereis()
+        pass
+
+    def trend(self):
+        outdir = join(self.this_class_tif, 'trend')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+        gs = global_gs
+        spei_scale = global_spei_list
+        VIs_list = ['NDVI-origin']
+
+        # for VI in VIs_list[2:]:
+        for VI in VIs_list:
+            year_range = global_VIs_year_range_dict[VI]
+            VI_spatial_dict = Meta_information().load_data(VI,year_range=year_range)
+            trend_spatial_dict = {}
+            p_spatial_dict = {}
+            for pix in tqdm(VI_spatial_dict,desc=f'{VI}'):
+                VI_vals = VI_spatial_dict[pix]
+                # print(VI_vals)
+                VI_vals = np.array(VI_vals,dtype=np.float)
+                VI_vals = VI_vals / 10000
+                VI_vals[VI_vals<-9999] = np.nan
+                VI_vals_gs = T.monthly_vals_to_annual_val(VI_vals,gs,method='mean')
+                try:
+                    a,b,r,p = T.nan_line_fit(range(len(VI_vals_gs)),VI_vals_gs)
+                except:
+                    continue
+                trend_spatial_dict[pix] = a
+                p_spatial_dict[pix] = p
+            arr_trend = DIC_and_TIF().pix_dic_to_spatial_arr(trend_spatial_dict)
+            arr_p = DIC_and_TIF().pix_dic_to_spatial_arr(p_spatial_dict)
+            outf_trend = join(outdir, f'{VI}_trend.tif')
+            outf_p = join(outdir, f'{VI}_trend_p.tif')
+            DIC_and_TIF().arr_to_tif(arr_trend, outf_trend)
+            DIC_and_TIF().arr_to_tif(arr_p, outf_p)
+        pass
+
+    def plot_trend(self):
+
+        fdir = join(self.this_class_tif, 'trend')
+        outdir = join(self.this_class_png, 'trend')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+        VI = 'NDVI-origin'
+        plt.figure(figsize=(8, 8))
+        flag = 1
+        trend_path = join(fdir, f'{VI}_trend.tif')
+        p_path = join(fdir, f'{VI}_trend_p.tif')
+        # ax = plt.subplot(1, 3, flag)
+        ax = plt.subplot(1, 1, 1)
+        flag += 1
+        m,ret = Plot().plot_ortho(trend_path,vmin=-0.004,vmax=0.004,ax=ax,cmap=global_cmap)
+        # m,ret = Plot().plot_ortho(trend_path,ax=ax,cmap=global_cmap_r)
+        m = Plot().plot_ortho_significance_scatter(m, p_path, temp_root,ax=ax,s=20,linewidths=1)
+        # save colorbar
+
+        outf = join(outdir, 'trend.png')
+        plt.savefig(outf, dpi=600)
+        plt.colorbar(ret, location='bottom')
+        # plt.show()
+        plt.tight_layout()
+        outf = join(outdir, 'trend_colorbar.png')
+        plt.savefig(outf, dpi=600)
+
+        plt.close()
+        pass
+
+    def dataframe_time_sereis(self):
+        from Chapter3 import statistic
+        outdir = join(self.this_class_arr, 'dataframe_time_sereis')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+
+        NDVI_origin_spatial_dict = Meta_information().load_data('NDVI')
+
+        df = T.spatial_dics_to_df({'NDVI':NDVI_origin_spatial_dict})
+        df = statistic.Dataframe_func(df).df
+        outf = join(outdir, 'ts.df')
+        T.save_df(df, outf)
+        T.df_to_excel(df, outf)
+
+    def plot_time_sereis(self):
+        dff = join(self.this_class_arr, 'dataframe_time_sereis', 'ts.df')
+        df = T.load_df(dff)
+
+        outdir = join(self.this_class_png, 'time_sereis')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+
+        ELI_bins = global_ELI_bins
+        gs = global_gs
+        df_group,bins_list_str = T.df_bin(df, 'ELI', ELI_bins)
+        date_list = []
+        for year in range(global_start_year, global_end_year+1):
+            for month in range(1,13):
+                date_list.append(f'{year}')
+        y_list = []
+        matrix = []
+        for name,df_group_i in df_group:
+            eli = name.left
+            print(eli)
+            vals = df_group_i['NDVI'].tolist()
+            vals = np.array(vals)
+            # annual_vals = []
+            # for val in vals:
+            #     val_annual = T.monthly_vals_to_annual_val(val,grow_season=(4,5,6),method='mean')
+            #     annual_vals.append(val_annual)
+            # annual_vals = np.array(annual_vals)
+            vals_mean = np.nanmean(vals,axis=0)
+            vals_mean = vals_mean.tolist()
+            matrix.append(vals_mean)
+            y_list.append(eli)
+        plt.figure(figsize=(12, 4))
+        plt.imshow(matrix, cmap=global_cmap, vmin=-0.6, vmax=0.6, aspect='auto')
+        plt.colorbar()
+        plt.yticks(range(len(y_list))[::4], y_list[::4])
+        plt.xticks(range(len(date_list))[3*12:][::12][::5], date_list[3*12:][::12][::5], rotation=0)
+        # plt.xlabel('ELI')
+        plt.ylabel('ELI')
+        plt.title('NDVI anomaly')
+        plt.tight_layout()
+        outf = join(outdir, f'NDVI_anomaly.pdf')
+        plt.savefig(outf)
+        plt.close()
+        # plt.show()
+
+        pass
+
 class VIs_and_SPEI_correlation:
 
     def __init__(self):
@@ -949,7 +1090,8 @@ def gen_world_grid_shp():
 def main():
     # Water_energy_limited_area().run()
     # Growing_season().run()
-    SPEI_trend().run()
+    # SPEI_trend().run()
+    VIs_trend().run()
     # VIs_and_SPEI_correlation().run()
     # VIs_and_SPEI_lag_correlation().run()
     # MAT_MAP().run()

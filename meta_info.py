@@ -45,11 +45,13 @@ global_AI_class_list = ('Humid', 'Arid')
 global_threshold = 0.05
 
 global_VIs_list = ['NDVI','VOD-anomaly','CSIF-anomaly']
+global_VIs_origin_list = ['NDVI-origin','VOD-origin','CSIF-origin']
 global_VIs_year_range_dict = {
     'NDVI': '1982-2015',
-    'VOD': '2003-2015',
+    'NDVI-origin': '1982-2015',
+    'VOD-origin': '2003-2015',
     'VOD-anomaly': '2003-2015',
-    'CSIF': '2001-2015',
+    'CSIF-origin': '2001-2015',
     'CSIF-anomaly': '2001-2015',
 }
 color_list = [
