@@ -199,6 +199,149 @@ class Growing_season:
         pass
 
 
+class SPEI_trend:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir(
+            'SPEI_trend',
+            result_root_this_script, mode=2)
+        pass
+
+    def run(self):
+        # self.trend()
+        # self.plot_trend()
+        # self.dataframe_time_sereis()
+        self.plot_time_sereis()
+        pass
+
+    def trend(self):
+        outdir = join(self.this_class_tif, 'trend')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+        gs = global_gs
+        spei_scale = global_spei_list
+        SPEI_data = Meta_information().load_data('SPEI')
+
+        for scale in spei_scale:
+            SPEI_spatial_dict = SPEI_data[scale]
+            trend_spatial_dict = {}
+            p_spatial_dict = {}
+            for pix in tqdm(SPEI_spatial_dict,desc=f'{scale}'):
+                SPEI = SPEI_spatial_dict[pix]
+                SPEI_gs = T.monthly_vals_to_annual_val(SPEI,gs,method='mean')
+                a,b,r,p = T.nan_line_fit(range(len(SPEI_gs)),SPEI_gs)
+                trend_spatial_dict[pix] = a
+                p_spatial_dict[pix] = p
+            arr_trend = DIC_and_TIF().pix_dic_to_spatial_arr(trend_spatial_dict)
+            arr_p = DIC_and_TIF().pix_dic_to_spatial_arr(p_spatial_dict)
+            outf_trend = join(outdir, f'{scale}_trend.tif')
+            outf_p = join(outdir, f'{scale}_trend_p.tif')
+            DIC_and_TIF().arr_to_tif(arr_trend, outf_trend)
+            DIC_and_TIF().arr_to_tif(arr_p, outf_p)
+        pass
+
+    def plot_trend(self):
+
+        fdir = join(self.this_class_tif, 'trend')
+        outdir = join(self.this_class_png, 'trend')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+        spei_list = global_spei_list
+
+        plt.figure(figsize=(12, 6))
+        flag = 1
+        for scale in spei_list:
+            trend_path = join(fdir, f'{scale}_trend.tif')
+            p_path = join(fdir, f'{scale}_trend_p.tif')
+            ax = plt.subplot(2, 4, flag)
+            # ax = plt.subplot(1, 1, 1)
+            flag += 1
+            m,ret = Plot().plot_ortho(trend_path,vmin=-0.06,vmax=0.06,ax=ax,cmap=global_cmap)
+            # m,ret = Plot().plot_ortho(trend_path,ax=ax,cmap=global_cmap)
+            m = Plot().plot_ortho_significance_scatter(m, p_path, temp_root,ax=ax,s=10)
+            # save colorbar
+            # plt.colorbar(ret,location='bottom')
+            # plt.tight_layout()
+            # outf = join(outdir, 'trend_colorbar.png')
+            # plt.savefig(outf, dpi=600)
+            # plt.close()
+            # exit()
+            #############
+            # plt.show()
+            # plt.title(f'{scale}')
+        plt.tight_layout()
+        outf = join(outdir, 'trend.png')
+        plt.savefig(outf, dpi=600)
+        plt.close()
+        # plt.show()
+        pass
+
+
+    def dataframe_time_sereis(self):
+        from Chapter3 import statistic
+        outdir = join(self.this_class_arr, 'dataframe_time_sereis')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+        gs = global_gs
+        spei_scale = global_spei_list
+        SPEI_data = Meta_information().load_data('SPEI')
+
+        all_dict = {}
+        for scale in tqdm(spei_scale):
+            SPEI_spatial_dict = SPEI_data[scale]
+            all_dict[scale] = SPEI_spatial_dict
+        df = T.spatial_dics_to_df(all_dict)
+        df = statistic.Dataframe_func(df).df
+        outf = join(outdir, 'ts.df')
+        T.save_df(df, outf)
+        T.df_to_excel(df, outf)
+
+
+    def plot_time_sereis(self):
+        dff = join(self.this_class_arr, 'dataframe_time_sereis', 'ts.df')
+        df = T.load_df(dff)
+
+        outdir = join(self.this_class_png, 'time_sereis')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+
+        ELI_bins = global_ELI_bins
+        spei_scale = ['spei12']
+
+        for scale in spei_scale:
+            df_group,bins_list_str = T.df_bin(df, 'ELI', ELI_bins)
+            date_list = []
+            for year in range(global_start_year, global_end_year+1):
+                for month in range(1, 13):
+                    date_list.append(f'{year}')
+            y_list = []
+            matrix = []
+            for name,df_group_i in df_group:
+                eli = name.left
+                print(eli)
+                vals = df_group_i[scale].tolist()
+                vals = np.array(vals)
+                vals_mean = np.nanmean(vals,axis=0)
+                vals_mean = vals_mean.tolist()
+                matrix.append(vals_mean)
+                y_list.append(eli)
+            plt.figure(figsize=(12, 4))
+            plt.imshow(matrix, cmap=global_cmap, vmin=-0.8, vmax=0.8, aspect='auto')
+            plt.colorbar()
+            plt.yticks(range(len(y_list))[::4], y_list[::4])
+            plt.xticks(range(len(date_list))[3*12:][::12][::5], date_list[3*12:][::12][::5], rotation=90)
+            # plt.xlabel('ELI')
+            plt.ylabel('ELI')
+            plt.title(f'{scale}')
+            plt.tight_layout()
+            outf = join(outdir, f'{scale}.pdf')
+            plt.savefig(outf)
+            plt.close()
+            # plt.show()
+
+
+        pass
+
 class VIs_and_SPEI_correlation:
 
     def __init__(self):
@@ -806,8 +949,9 @@ def gen_world_grid_shp():
 def main():
     # Water_energy_limited_area().run()
     # Growing_season().run()
+    SPEI_trend().run()
     # VIs_and_SPEI_correlation().run()
-    VIs_and_SPEI_lag_correlation().run()
+    # VIs_and_SPEI_lag_correlation().run()
     # MAT_MAP().run()
     # Isohydricity().run()
     # Aridity_index().run()

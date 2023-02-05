@@ -813,7 +813,7 @@ class ELI:
         }
 
         suffix_list = ['_max_lag', '_max_r', '_max_scale']
-        ELI_bins = np.arange(-0.8, 0.7, .05)
+        ELI_bins = global_ELI_bins
         for suffix in suffix_list:
             plt.figure(figsize=(6, 4))
             for VI in VIs_list:
