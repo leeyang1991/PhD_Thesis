@@ -937,20 +937,6 @@ class ELI_every_SPEI_scale:
             # plt.show()
 
 
-
-
-
-
-class Isohydricity:
-
-    def __init__(self):
-
-        pass
-
-    def run(self):
-
-        pass
-
 class Latitude:
 
     def __init__(self):
@@ -1014,9 +1000,6 @@ class Latitude:
 
         pass
 
-class Temporal:
-
-    pass
 
 
 def main():

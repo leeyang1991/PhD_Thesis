@@ -354,7 +354,8 @@ class VIs_trend:
         # self.trend()
         # self.plot_trend()
         # self.dataframe_time_sereis()
-        self.plot_time_sereis()
+        # self.plot_time_sereis_ELI()
+        self.plot_time_sereis_ltd()
         pass
 
     def trend(self):
@@ -436,11 +437,11 @@ class VIs_trend:
         T.save_df(df, outf)
         T.df_to_excel(df, outf)
 
-    def plot_time_sereis(self):
+    def plot_time_sereis_ELI(self):
         dff = join(self.this_class_arr, 'dataframe_time_sereis', 'ts.df')
         df = T.load_df(dff)
 
-        outdir = join(self.this_class_png, 'time_sereis')
+        outdir = join(self.this_class_png, 'time_sereis_ELI')
         T.mk_dir(outdir)
         T.open_path_and_file(outdir)
 
@@ -477,11 +478,11 @@ class VIs_trend:
         plt.title('NDVI anomaly')
         plt.tight_layout()
         outf = join(outdir, f'NDVI_anomaly.pdf')
-        plt.savefig(outf)
-        plt.close()
-        # plt.show()
-
+        # plt.savefig(outf)
+        # plt.close()
+        plt.show()
         pass
+
 
 class VIs_and_SPEI_correlation:
 
@@ -1024,6 +1025,213 @@ class Aridity_index:
         plt.close()
         pass
 
+class Moving_window_correlation:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir(
+            'Moving_window_correlation',
+            result_root_this_script, mode=2)
+        pass
+
+    def run(self):
+        # self.VI_SPEI_moving_window_correlation()
+        # self.plot_moving_window_correlation()
+        # self.plot_moving_window_correlation_ELI()
+        # self.moving_window_spatial_trend()
+        self.plot_moving_window_spatial_trend()
+        pass
+
+    def moving_window_correlation(self, arr1, arr2, window_size:int=10, date_list:list=None):
+        if not len(arr1) == len(arr2):
+            raise ValueError('arr1 and arr2 must have the same length')
+        if not date_list is None:
+            if not len(arr1) == len(date_list):
+                raise ValueError('arr and date_list must have the same length')
+        if window_size <= 3:
+            raise ValueError('window_size must be greater than 3')
+        arr1 = np.array(arr1)
+        arr2 = np.array(arr2)
+        corr_dict = {}
+        for i in range(len(arr1)):
+            if i + window_size >= len(arr1):
+                break
+            if not date_list is None:
+                window_name = f'{date_list[i]}-{date_list[i+window_size]}'
+            else:
+                window_name = f'{i}-{i+window_size}'
+            picked_arr1 = arr1[i:i+window_size]
+            picked_arr2 = arr2[i:i+window_size]
+            r,p = T.nan_correlation(picked_arr1, picked_arr2)
+            corr_dict[window_name] = r
+        return corr_dict
+
+    def VI_SPEI_moving_window_correlation(self):
+        from Chapter3 import statistic
+        outdir = join(self.this_class_arr,'Moving_window_correlation')
+        T.mk_dir(outdir)
+        # T.open_path_and_file(outdir)
+        gs = global_gs
+        VIs_list = global_VIs_list
+        SPEI_list = global_spei_list
+
+        for VI in VIs_list:
+            max_spei_scale = join(VIs_and_SPEI_correlation().this_class_tif, 'max_spei_scale',f'{VI}_max_scale.tif')
+            max_spei_scale_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(max_spei_scale)
+            year_range = global_VIs_year_range_dict[VI]
+            start_year, end_year = year_range.split('-')
+            start_year = int(start_year)
+            end_year = int(end_year)
+            year_list = list(range(start_year, end_year + 1))
+            VI_data = Meta_information().load_data(VI, year_range)
+            SPEI_data = Meta_information().load_data('SPEI', year_range)
+            VI_spatial_dict = VI_data
+            correlation_spatial_dict = {}
+            for pix in tqdm(VI_spatial_dict):
+                VI_arr = VI_spatial_dict[pix]
+                max_scale = max_spei_scale_spatial_dict[pix]
+                if np.isnan(max_scale):
+                    continue
+                max_scale = int(max_scale)
+                max_scale = f'spei{max_scale:02d}'
+                if not pix in SPEI_data[max_scale]:
+                    continue
+                SPEI_arr = SPEI_data[max_scale][pix]
+                VI_gs = T.monthly_vals_to_annual_val(VI_arr,gs,method='mean')
+                SPEI_gs = T.monthly_vals_to_annual_val(SPEI_arr,gs,method='mean')
+                corr_dict = self.moving_window_correlation(VI_gs, SPEI_gs, window_size=10,date_list=year_list)
+                correlation_spatial_dict[pix] = corr_dict
+            df = T.dic_to_df(correlation_spatial_dict,key_col_str='pix')
+            df = statistic.Dataframe_func(df).df
+            outf = join(outdir,f'{VI}.df')
+            T.save_df(df,outf)
+            T.df_to_excel(df,outf)
+
+    def plot_moving_window_correlation(self):
+        fdir = join(self.this_class_arr,'Moving_window_correlation')
+        outdir = join(self.this_class_png,'plot_moving_window_correlation')
+        T.mk_dir(outdir)
+        # T.open_path_and_file(outdir)
+        dff = join(fdir,'NDVI.df')
+        df = T.load_df(dff)
+        year_list = df.columns.tolist()
+        year_list.remove('pix')
+        other_cols = ['lon', 'lat', 'landcover_GLC', 'NDVI_MASK', 'aridity_index', 'ELI', 'ELI_class', 'AI_class', 'Koppen', 'MAT', 'MAP', 'ISO_Hydricity']
+        for col in other_cols:
+            year_list.remove(col)
+        ltd_list = global_ELI_class
+        for ltd in ltd_list:
+            df_ltd = df[df['ELI_class'] == ltd]
+            moving_window = []
+            err_list = []
+            for year in year_list:
+                vals = df_ltd[year].tolist()
+                # print(vals)
+                vals_mean = np.nanmean(vals)
+                # err = np.nanstd(vals)
+                err,_,_ = T.uncertainty_err(vals)
+                moving_window.append(vals_mean)
+                err_list.append(err)
+            plt.figure(figsize=(5, 3))
+            plt.plot(year_list,moving_window)
+            plt.xticks(year_list, rotation=90)
+            plt.fill_between(year_list, np.array(moving_window) - np.array(err_list), np.array(moving_window) + np.array(err_list), alpha=0.5)
+            plt.title(ltd)
+            plt.xlabel('Year')
+            plt.ylabel('Correlation')
+            plt.tight_layout()
+            outf = join(outdir,f'{ltd}.pdf')
+            plt.savefig(outf)
+            plt.close()
+
+    def plot_moving_window_correlation_ELI(self):
+        fdir = join(self.this_class_arr,'Moving_window_correlation')
+        outdir = join(self.this_class_png,'plot_moving_window_correlation_ELI')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+        dff = join(fdir,'NDVI.df')
+        df = T.load_df(dff)
+        year_list = df.columns.tolist()
+        year_list.remove('pix')
+        other_cols = ['lon', 'lat', 'landcover_GLC', 'NDVI_MASK', 'aridity_index', 'ELI', 'ELI_class', 'AI_class', 'Koppen', 'MAT', 'MAP', 'ISO_Hydricity']
+        for col in other_cols:
+            year_list.remove(col)
+        # print(year_list)
+        # exit()
+        ELI_bins = global_ELI_bins
+        ELI_col = 'ELI'
+        df_group,bins_list_str = T.df_bin(df,ELI_col,ELI_bins)
+        matrix = []
+        y_list = []
+        for name,df_group_i in df_group:
+            y_list.append(name.left)
+            moving_window = []
+            for year in year_list:
+                vals = df_group_i[year].tolist()
+                # print(vals)
+                vals_mean = np.nanmean(vals)
+                moving_window.append(vals_mean)
+            matrix.append(moving_window)
+        matrix = np.array(matrix)
+        plt.imshow(matrix,aspect='auto',cmap='RdBu_r',vmin=-0.2,vmax=0.6)
+        plt.colorbar()
+        plt.xticks(range(len(year_list)),year_list,rotation=90)
+        plt.yticks(range(len(y_list)),y_list)
+        plt.xlabel('Year')
+        plt.ylabel('ELI')
+        plt.title('Moving window correlation')
+        plt.tight_layout()
+        outf = join(outdir,f'ELI.pdf')
+        plt.savefig(outf)
+        plt.close()
+        # plt.show()
+
+    def moving_window_spatial_trend(self):
+        outdir = join(self.this_class_tif,'moving_window_spatial_trend')
+        T.mk_dir(outdir)
+
+        dff = join(self.this_class_arr,'Moving_window_correlation','NDVI.df')
+        df = T.load_df(dff)
+        T.print_head_n(df,5)
+        year_list = df.columns.tolist()
+        year_list.remove('pix')
+        other_cols = ['lon', 'lat', 'landcover_GLC', 'NDVI_MASK', 'aridity_index', 'ELI', 'ELI_class', 'AI_class',
+                      'Koppen', 'MAT', 'MAP', 'ISO_Hydricity']
+        for col in other_cols:
+            year_list.remove(col)
+        moving_window_trend_dict = {}
+        moving_window_trend_p_dict = {}
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            year_vals = []
+            for col in year_list:
+                val = row[col]
+                year_vals.append(val)
+            pix = row['pix']
+            a,b,r,p = T.nan_line_fit(list(range(len(year_vals))),year_vals)
+            moving_window_trend_dict[pix] = a
+            moving_window_trend_p_dict[pix] = p
+        outf_trend = join(outdir,'moving_window_trend.tif')
+        outf_p = join(outdir,'moving_window_trend_p.tif')
+        DIC_and_TIF().pix_dic_to_tif(moving_window_trend_dict,outf_trend)
+        DIC_and_TIF().pix_dic_to_tif(moving_window_trend_p_dict,outf_p)
+        pass
+
+    def plot_moving_window_spatial_trend(self):
+        fdir = join(self.this_class_tif,'moving_window_spatial_trend')
+        outdir = join(self.this_class_png,'plot_moving_window_spatial_trend')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+        trend_tif = join(fdir,'moving_window_trend.tif')
+        trend_p_tif = join(fdir,'moving_window_trend_p.tif')
+        plt.figure(figsize=(8,8))
+        # m,ret = Plot().plot_ortho(trend_tif,cmap='RdBu_r',vmin=-0.05,vmax=0.05)
+        m,ret = Plot().plot_ortho(trend_tif,vmin=-0.05,vmax=0.05)
+        Plot().plot_ortho_significance_scatter(m,trend_p_tif,temp_root,linewidths=1.5)
+        # m.colorbar(ret,location='bottom',pad='5%')
+        outf = join(outdir,'moving_window_trend.png')
+        plt.savefig(outf,dpi=600)
+        plt.close()
+        # plt.show()
+
 def line_to_shp(inputlist, outSHPfn):
     ############重要#################
     gdal.SetConfigOption("SHAPE_ENCODING", "GBK")
@@ -1097,6 +1305,7 @@ def main():
     # MAT_MAP().run()
     # Isohydricity().run()
     # Aridity_index().run()
+    # Moving_window_correlation().run()
 
     # gen_world_grid_shp()
     pass
