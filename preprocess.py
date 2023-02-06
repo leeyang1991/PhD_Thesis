@@ -13,91 +13,49 @@ class GIMMS_NDVI:
         pass
 
     def run(self):
-        # self.pick_annual_gs_NDVI_origin()
-        # self.pick_annual_gs_NDVI()
-        self.every_month()
-
-    def pick_annual_gs_NDVI_origin(self):
-        # import analysis
-        var_name = 'NDVI_origin'
-        outdir = join(self.datadir, 'per_pix_clean',global_year_range+'_gs')
-        gs_dict = analysis.Growing_season().longterm_growing_season()
-        spatial_dict = analysis.GLobal_var().load_data(var_name)
-        T.mkdir(outdir)
-        outf = join(outdir, f'{var_name}')
-        annual_spatial_dict = {}
-        for pix in tqdm(spatial_dict):
-            if not pix in gs_dict:
-                continue
-            gs = gs_dict[pix]
-            gs = list(gs)
-            vals = spatial_dict[pix]
-            vals_annual = T.monthly_vals_to_annual_val(vals, gs)
-            annual_spatial_dict[pix] = vals_annual
-        T.save_npy(annual_spatial_dict, outf)
-
-    def pick_annual_gs_NDVI(self):
-        # import analysis
-        var_name = 'NDVI'
-        outdir = join(self.datadir, 'per_pix_clean_anomaly_detrend',global_year_range+'_gs')
-        gs_dict = analysis.Growing_season().longterm_growing_season()
-        spatial_dict = analysis.GLobal_var().load_data(var_name)
-        T.mkdir(outdir)
-        outf = join(outdir, f'{var_name}')
-        annual_spatial_dict = {}
-        for pix in tqdm(spatial_dict):
-            if not pix in gs_dict:
-                continue
-            gs = gs_dict[pix]
-            gs = list(gs)
-            vals = spatial_dict[pix]
-            vals_annual = T.monthly_vals_to_annual_val(vals, gs)
-            annual_spatial_dict[pix] = vals_annual
-        T.save_npy(annual_spatial_dict, outf)
-
-    def every_month(self):
-        # fdir = join(self.datadir,'per_pix_clean_anomaly_detrend',year_range)
-        fdir = join(self.datadir,'per_pix_clean',global_year_range)
-        outdir = join(self.datadir,'every_month',global_year_range)
-        T.mkdir(outdir,force=True)
-
-        spatial_dict = T.load_npy_dir(fdir)
-        month_list = range(1,13)
-
-        for mon in month_list:
-            spatial_dict_mon = {}
-            for pix in tqdm(spatial_dict,desc=f'{mon}'):
-                r,c = pix
-                if r > 180:
-                    continue
-                vals = spatial_dict[pix]
-                val_mon = T.monthly_vals_to_annual_val(vals,[mon])
-                val_mon[val_mon<-10] = -999999
-                num = T.count_num(val_mon,-999999)
-                if num > 10:
-                    continue
-                val_mon[val_mon<-10] = np.nan
-                if T.is_all_nan(val_mon):
-                    continue
-                spatial_dict_mon[pix] = val_mon
-            outf = join(outdir,f'{mon:02d}')
-            T.save_npy(spatial_dict_mon,outf)
-
-
-    def check_pix(self):
-        # fdir = join(self.datadir,'per_pix_clean_anomaly_detrend')
-        # spatial_dict = T.load_npy_dir(fdir)
-        # spatial_dict_count = {}
-        # for pix in tqdm(spatial_dict):
-        #     vals = spatial_dict[pix]
-        #     a,b,r,p = T.nan_line_fit(list(range(len(vals))), vals)
-        #     spatial_dict_count[pix] = a
-        # arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict_count)
-        # plt.imshow(arr, cmap='jet')
-        # plt.show()
-
+        # self.resample()
+        # self.monthly_compose()
+        # self.per_pix()
+        # self.per_pix_anomaly()
+        self.per_pix_anomaly_detrend()
         pass
 
+    def resample(self):
+        fdir = join(self.datadir,'tif_8km_bi_weekly')
+        outdir = join(self.datadir,'bi_weekly_05')
+        T.mk_dir(outdir)
+        for f in tqdm(T.listdir(fdir)):
+            if not f.endswith('.tif'):
+                continue
+            fpath = join(fdir,f)
+            outpath = join(outdir,f)
+            ToRaster().resample_reproj(fpath,outpath,0.5)
+
+    def monthly_compose(self):
+        fdir = join(self.datadir,'bi_weekly_05')
+        outdir = join(self.datadir,'tif')
+        T.mk_dir(outdir)
+        Pre_Process().monthly_compose(fdir,outdir,method='max')
+        pass
+
+    def per_pix(self):
+        fdir = join(self.datadir,'tif')
+        outdir = join(self.datadir,'per_pix')
+        T.mk_dir(outdir)
+        Pre_Process().data_transform(fdir,outdir)
+
+    def per_pix_anomaly(self):
+        fdir = join(self.datadir,'per_pix')
+        outdir = join(self.datadir,'per_pix_anomaly')
+        T.mk_dir(outdir)
+        Pre_Process().cal_anomaly(fdir,outdir)
+
+    def per_pix_anomaly_detrend(self):
+        fdir = join(self.datadir,'per_pix_anomaly')
+        outdir = join(self.datadir,'per_pix_anomaly_detrend')
+        T.mk_dir(outdir)
+        Pre_Process().detrend(fdir,outdir)
+        pass
 
 class SPEI:
 
@@ -1548,8 +1506,8 @@ class GLEAM_SMRoot:
         pass
 
 def main():
-    # GIMMS_NDVI().run()
-    SPEI().run()
+    GIMMS_NDVI().run()
+    # SPEI().run()
     # SPI().run()
     # TMP().run()
     # Precipitation().run()

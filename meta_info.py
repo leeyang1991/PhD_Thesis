@@ -99,11 +99,11 @@ class Meta_information:
                 'path_type': 'multi-files',
             },
             'NDVI': {
-                'path': join(data_root, 'GIMMS_NDVI/per_pix_clean_anomaly_detrend',year_range),
+                'path': join(data_root, 'GIMMS_NDVI/per_pix_anomaly_detrend',year_range),
                 'path_type': 'dir',
             },
             'NDVI-origin': {
-                'path': join(data_root, 'GIMMS_NDVI/per_pix_clean', year_range),
+                'path': join(data_root, 'GIMMS_NDVI/per_pix', year_range),
                 'path_type': 'dir',
             },
             'CSIF-origin': {
