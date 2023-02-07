@@ -211,7 +211,8 @@ class SPEI_trend:
         # self.trend()
         # self.plot_trend()
         # self.dataframe_time_sereis()
-        self.plot_time_sereis()
+        # self.plot_time_sereis()
+        self.plot_time_sereis_ltd()
         pass
 
     def trend(self):
@@ -335,12 +336,52 @@ class SPEI_trend:
             plt.title(f'{scale}')
             plt.tight_layout()
             outf = join(outdir, f'{scale}.pdf')
+            # plt.savefig(outf)
+            # plt.close()
+            plt.show()
+
+    def plot_time_sereis_ltd(self):
+        dff = join(self.this_class_arr, 'dataframe_time_sereis', 'ts.df')
+        df = T.load_df(dff)
+
+        outdir = join(self.this_class_png, 'plot_time_sereis_ltd')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+
+        gs = global_gs
+        year_list = []
+        for year in range(global_start_year, global_end_year + 1):
+            year_list.append(year)
+        y_list = []
+        matrix = []
+        ltd_list = global_ELI_class
+        for ltd in ltd_list:
+            df_ltd = df[df['ELI_class'] == ltd]
+            vals = df_ltd['spei12'].tolist()
+            vals_gs = []
+            for val in tqdm(vals, desc=f'{ltd}'):
+                val_gs = T.monthly_vals_to_annual_val(val, grow_season=gs, method='mean')
+                vals_gs.append(val_gs)
+            vals_gs_mean = np.nanmean(vals_gs, axis=0)
+            vals_gs_err = np.nanstd(vals_gs, axis=0)
+            vals_gs_err = vals_gs_err / 4.
+            plt.figure(figsize=(5, 3))
+            plt.plot(year_list, vals_gs_mean)
+            plt.xticks(year_list, rotation=90)
+            plt.fill_between(year_list, np.array(vals_gs_mean) - np.array(vals_gs_err),
+                             np.array(vals_gs_mean) + np.array(vals_gs_err), alpha=0.5)
+            plt.title(ltd)
+            plt.xlabel('Year')
+            plt.ylabel('spei12')
+            plt.ylim(-0.9, 0.9)
+            plt.tight_layout()
+            # plt.show()
+            outf = join(outdir, f'{ltd}.pdf')
             plt.savefig(outf)
             plt.close()
-            # plt.show()
-
 
         pass
+
 
 class VIs_trend:
 
@@ -481,6 +522,44 @@ class VIs_trend:
         # plt.savefig(outf)
         # plt.close()
         plt.show()
+
+    def plot_time_sereis_ltd(self):
+        dff = join(self.this_class_arr, 'dataframe_time_sereis', 'ts.df')
+        df = T.load_df(dff)
+        outdir = join(self.this_class_png, 'time_sereis_ltd')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+        gs = global_gs
+        year_list = []
+        for year in range(global_start_year, global_end_year+1):
+            year_list.append(year)
+        y_list = []
+        matrix = []
+        ltd_list = global_ELI_class
+        for ltd in ltd_list:
+            df_ltd = df[df['ELI_class'] == ltd]
+            vals = df_ltd['NDVI'].tolist()
+            vals_gs = []
+            for val in tqdm(vals,desc=f'{ltd}'):
+                val_gs = T.monthly_vals_to_annual_val(val, grow_season=gs, method='mean')
+                vals_gs.append(val_gs)
+            vals_gs_mean = np.nanmean(vals_gs, axis=0)
+            vals_gs_err = np.nanstd(vals_gs, axis=0)
+            vals_gs_err = vals_gs_err / 2.
+            plt.figure(figsize=(5, 3))
+            plt.plot(year_list, vals_gs_mean)
+            plt.xticks(year_list, rotation=90)
+            plt.fill_between(year_list, np.array(vals_gs_mean) - np.array(vals_gs_err),
+                             np.array(vals_gs_mean) + np.array(vals_gs_err), alpha=0.5)
+            plt.title(ltd)
+            plt.xlabel('Year')
+            plt.ylabel('NDVI anomaly')
+            plt.ylim(-0.7, 0.7)
+            plt.tight_layout()
+            plt.show()
+            # outf = join(outdir, f'{ltd}.pdf')
+            # plt.savefig(outf)
+            # plt.close()
         pass
 
 
@@ -1035,10 +1114,10 @@ class Moving_window_correlation:
 
     def run(self):
         # self.VI_SPEI_moving_window_correlation()
-        # self.plot_moving_window_correlation()
+        self.plot_moving_window_correlation_time_sereis()
         # self.plot_moving_window_correlation_ELI()
         # self.moving_window_spatial_trend()
-        self.plot_moving_window_spatial_trend()
+        # self.plot_moving_window_spatial_trend()
         pass
 
     def moving_window_correlation(self, arr1, arr2, window_size:int=10, date_list:list=None):
@@ -1106,7 +1185,7 @@ class Moving_window_correlation:
             T.save_df(df,outf)
             T.df_to_excel(df,outf)
 
-    def plot_moving_window_correlation(self):
+    def plot_moving_window_correlation_time_sereis(self):
         fdir = join(self.this_class_arr,'Moving_window_correlation')
         outdir = join(self.this_class_png,'plot_moving_window_correlation')
         T.mk_dir(outdir)
@@ -1298,8 +1377,8 @@ def gen_world_grid_shp():
 def main():
     # Water_energy_limited_area().run()
     # Growing_season().run()
-    # SPEI_trend().run()
-    VIs_trend().run()
+    SPEI_trend().run()
+    # VIs_trend().run()
     # VIs_and_SPEI_correlation().run()
     # VIs_and_SPEI_lag_correlation().run()
     # MAT_MAP().run()
