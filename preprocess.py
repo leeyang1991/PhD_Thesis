@@ -1505,8 +1505,63 @@ class GLEAM_SMRoot:
         T.save_npy(spatial_dict_detrend,outf)
         pass
 
+class ERA_2m_T:
+
+    def __init__(self):
+        self.datadir = join(data_root,'ERA_2m_T')
+        pass
+
+    def run(self):
+        self.download_data()
+        pass
+
+    def download_data(self):
+        from ecmwfapi import ECMWFDataServer
+        server = ECMWFDataServer()
+        outdir = join(self.datadir,'nc')
+        T.mk_dir(outdir,force=True)
+        date_list = []
+        init_date = datetime.datetime(1982,1,1)
+        flag = 1
+        for y in range(1982, 2019):
+            for m in range(1, 13):
+                # date = '{}{:02d}{:02d}'.format(y, m, 1)
+                # date = "1982-01-01/to/1982-01-31"
+                start_date_obj = T.month_index_to_date_obj(flag-1, init_date)
+                end_date_obj = T.month_index_to_date_obj(flag, init_date) - datetime.timedelta(days=1)
+                flag += 1
+                start_date = start_date_obj.strftime('%Y-%m-%d')
+                end_date = end_date_obj.strftime('%Y-%m-%d')
+                date_range = f'{start_date}/to/{end_date}'
+                # outf = join(outdir, f'{y}{m:02d}.nc')
+                # print(date_range)
+                date_list.append(date_range)
+        for date_range in tqdm(date_list):
+            start_date = date_range.split('/')[0]
+            end_date = date_range.split('/')[2]
+            start_date = start_date.replace('-','')
+            end_date = end_date.replace('-','')
+            outf = join(outdir, f'{start_date}_{end_date}.nc')
+            server.retrieve({
+                "class": "ei",
+                "dataset": "interim",
+                "date": date_range,
+                "expver": "1",
+                "grid": "0.75/0.75",
+                "levtype": "sfc",
+                "param": "167.128",
+                "step": "12",
+                "stream": "oper",
+                "time": "12:00:00",
+                "type": "fc",
+                "target": outf,
+                "format": "netcdf",
+            })
+        pass
+
+
 def main():
-    GIMMS_NDVI().run()
+    # GIMMS_NDVI().run()
     # SPEI().run()
     # SPI().run()
     # TMP().run()
@@ -1525,6 +1580,7 @@ def main():
     # SPI().run()
     # GLEAM_ET().run()
     # GLEAM_SMRoot().run()
+    ERA_2m_T().run()
 
     pass
 
