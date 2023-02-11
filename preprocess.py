@@ -1527,7 +1527,7 @@ class ERA_2m_T:
             for m in range(1, 13):
                 # date = '{}{:02d}{:02d}'.format(y, m, 1)
                 # date = "1982-01-01/to/1982-01-31"
-                start_date_obj = T.month_index_to_date_obj(flag-1, init_date)
+                start_date_obj = T.month_index_to_date_obj(flag-1, init_date) - datetime.timedelta(days=1)
                 end_date_obj = T.month_index_to_date_obj(flag, init_date) - datetime.timedelta(days=1)
                 flag += 1
                 start_date = start_date_obj.strftime('%Y-%m-%d')
@@ -1537,6 +1537,7 @@ class ERA_2m_T:
                 # print(date_range)
                 date_list.append(date_range)
         for date_range in tqdm(date_list):
+            # print(date_range)
             start_date = date_range.split('/')[0]
             end_date = date_range.split('/')[2]
             start_date = start_date.replace('-','')
@@ -1557,7 +1558,88 @@ class ERA_2m_T:
                 "target": outf,
                 "format": "netcdf",
             })
+            # exit()
         pass
+
+class GOME2_SIF:
+    '''
+    ref: Spatially downscaling sun-induced chlorophyll fluorescence leads to an improved temporal correlation with gross primary productivity
+    '''
+    def __init__(self):
+        self.datadir = join(data_root, 'GOME2_SIF')
+        pass
+
+    def run(self):
+        # self.nc_to_tif()
+        # self.resample()
+        # self.monthly_compose()
+        # self.drop_invalid_value()
+        # self.per_pix()
+        # self.anomaly()
+        self.detrend()
+        pass
+
+    def nc_to_tif(self):
+        fdir = join(self.datadir,'nc')
+        outdir = join(self.datadir,'tif')
+        T.mk_dir(outdir,force=True)
+        for f in tqdm(T.listdir(fdir)):
+            fpath = join(fdir,f)
+            outdir_i = join(outdir,f.split('.')[0])
+            T.mk_dir(outdir_i,force=True)
+            T.nc_to_tif(fpath,'SIF',outdir_i)
+
+    def resample(self):
+        fdir = join(self.datadir,'tif')
+        outdir = join(self.datadir,'tif_05')
+        T.mk_dir(outdir,force=True)
+        for folder in T.listdir(fdir):
+            fdir_i = join(fdir,folder)
+            for f in tqdm(T.listdir(fdir_i),desc=folder):
+                fpath = join(fdir_i,f)
+                outpath = join(outdir,f)
+                ToRaster().resample_reproj(fpath,outpath,0.5)
+        pass
+
+    def monthly_compose(self):
+        fdir = join(self.datadir,'tif_05')
+        outdir = join(self.datadir,'tif_mvc_05')
+        T.mk_dir(outdir)
+        Pre_Process().monthly_compose(fdir,outdir,method='max')
+        pass
+
+    def drop_invalid_value(self):
+        '''
+        nan value: -32768
+        :return:
+        '''
+        fdir = join(self.datadir,'tif_mvc_05')
+        outdir = join(self.datadir,'tif_mvc_05_drop_nan')
+        T.mk_dir(outdir)
+        for f in tqdm(T.listdir(fdir)):
+            fpath = join(fdir,f)
+            outpath = join(outdir,f)
+            array, originX, originY, pixelWidth, pixelHeight = ToRaster().raster2array(fpath)
+            array[array<0] = np.nan
+            DIC_and_TIF().arr_to_tif(array,outpath)
+
+    def per_pix(self):
+        fdir = join(self.datadir,'tif_mvc_05_drop_nan')
+        outdir = join(self.datadir,'per_pix/2007-2018')
+        T.mk_dir(outdir,force=True)
+        Pre_Process().data_transform(fdir,outdir)
+
+    def anomaly(self):
+        fdir = join(self.datadir,'per_pix/2007-2018')
+        outdir = join(self.datadir,'anomaly/2007-2018')
+        T.mk_dir(outdir,force=True)
+        Pre_Process().cal_anomaly(fdir,outdir)
+
+    def detrend(self):
+        fdir = join(self.datadir,'anomaly/2007-2018')
+        outdir = join(self.datadir,'detrend/2007-2018')
+        T.mk_dir(outdir,force=True)
+        Pre_Process().detrend(fdir,outdir)
 
 
 def main():
@@ -1580,7 +1662,8 @@ def main():
     # SPI().run()
     # GLEAM_ET().run()
     # GLEAM_SMRoot().run()
-    ERA_2m_T().run()
+    # ERA_2m_T().run()
+    GOME2_SIF().run()
 
     pass
 
