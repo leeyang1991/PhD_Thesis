@@ -166,6 +166,126 @@ class Water_energy_limited_area:
         pass
 
 
+class Water_energy_limited_area_daily:
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir('Water_energy_limited_area_daily',
+                                                                                       result_root_this_script, mode=2)
+        pass
+
+    def run(self):
+        # self.ELI()
+        # self.ELI_perpix()
+        # self.anomaly()
+        # self.trend()
+        self.plot_ELI_trend()
+
+        pass
+
+    def load_data(self,year,mon):
+        year = int(year)
+        year = str(year)
+        mon = int(mon)
+        mon = f'{mon:02d}'
+
+        ET_path = join(data_root,'GLEAM_daily','perpix',year,'Et',mon)
+        SMsurf_path = join(data_root,'GLEAM_daily','perpix',year,'SMsurf',mon)
+        SMroot_path = join(data_root,'GLEAM_daily','perpix',year,'SMroot',mon)
+        T_path = join(data_root,'ERA_daily_Tair','perpix',year,mon)
+
+        ET_dict = T.load_npy_dir(ET_path)
+        SMsurf_dict = T.load_npy_dir(SMsurf_path)
+        SMroot_dict = T.load_npy_dir(SMroot_path)
+        T_dict = T.load_npy_dir(T_path)
+        return ET_dict,SMsurf_dict,SMroot_dict,T_dict
+
+    def ELI(self):
+        outdir = join(self.this_class_tif,'ELI')
+        T.mk_dir(outdir)
+        year_list = list(range(global_start_year,global_end_year+1))
+        mon_list = list(range(1,13))
+        for year in tqdm(year_list):
+            for mon in mon_list:
+                outf = join(outdir,f'{year}{mon:02d}.tif')
+                ET_dict, SMsurf_dict, SMroot_dict, T_dict = self.load_data(year,mon)
+                spatial_dict = {}
+                for pix in ET_dict:
+                    r,c = pix
+                    if r > 180:
+                        continue
+                    if not pix in SMsurf_dict or not pix in SMroot_dict or not pix in T_dict:
+                        continue
+                    ET = ET_dict[pix]
+                    SMsurf = SMsurf_dict[pix]
+                    # SMroot = SMroot_dict[pix]
+                    Temp = T_dict[pix]
+                    if T.is_all_nan(ET):
+                        continue
+                    ET_sm_corr,_ = T.nan_correlation(ET,SMsurf)
+                    ET_Temp_corr,_ = T.nan_correlation(ET,Temp)
+                    ELI = ET_sm_corr - ET_Temp_corr
+                    spatial_dict[pix] = ELI
+                arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
+                DIC_and_TIF().arr_to_tif(arr,outf)
+
+
+    def ELI_perpix(self):
+        fdir = join(self.this_class_tif,'ELI')
+        outdir = join(self.this_class_arr,'ELI','perpix','1982-2015')
+        T.mk_dir(outdir,force=1)
+        Pre_Process().data_transform(fdir,outdir)
+
+        pass
+
+    def anomaly(self):
+        fdir = join(self.this_class_arr,'ELI','perpix','1982-2015')
+        outdir = join(self.this_class_arr,'ELI','anomaly','1982-2015')
+        T.mk_dir(outdir,force=1)
+        Pre_Process().cal_anomaly(fdir,outdir)
+
+        pass
+
+    def trend(self):
+        fdir = join(self.this_class_arr,'ELI','perpix','1982-2015')
+        outdir = join(self.this_class_tif,'trend','1982-2015')
+        T.mk_dir(outdir,force=1)
+        gs = global_gs
+        spatial_dict = T.load_npy_dir(fdir)
+        spatial_dict_a = {}
+        spatial_dict_p = {}
+        for pix in tqdm(spatial_dict):
+            vals = spatial_dict[pix]
+            vals = T.mask_999999_arr(vals,warning=False)
+            if T.is_all_nan(vals):
+                continue
+            annual_gs_vals = T.monthly_vals_to_annual_val(vals,grow_season=gs,method='mean')
+            a,b,r,p = T.nan_line_fit(list(range(len(annual_gs_vals))),annual_gs_vals)
+            spatial_dict_a[pix] = a
+            spatial_dict_p[pix] = p
+        outf_a = join(outdir,'ELI_trend.tif')
+        outf_p = join(outdir,'ELI_trend_p.tif')
+        DIC_and_TIF().pix_dic_to_tif(spatial_dict_a,outf_a)
+        DIC_and_TIF().pix_dic_to_tif(spatial_dict_p,outf_p)
+
+
+    def plot_ELI_trend(self):
+        fdir = join(self.this_class_tif,'trend','1982-2015')
+        outdir = join(self.this_class_png,'trend','1982-2015')
+        T.mk_dir(outdir,force=1)
+        trend_f = join(fdir, 'ELI_trend.tif')
+        p_f = join(fdir, 'ELI_trend_p.tif')
+        plt.figure(figsize=(8, 8))
+        ax = plt.subplot(111)
+        m, ret = Plot().plot_ortho(trend_f, vmin=-0.01, vmax=0.01, ax=ax, cmap=global_cmap_r)
+        m = Plot().plot_ortho_significance_scatter(m, p_f, temp_root, ax=ax, s=30,linewidths=1)
+        # ax.set_title('ELI trend')
+        plt.colorbar(ret, ax=ax, shrink=0.5, location='bottom',pad=0.05)
+        outf = join(outdir, 'ELI_trend.png')
+        plt.savefig(outf, dpi=600)
+        plt.close()
+        pass
+
+
+
 class Growing_season:
     def __init__(self):
         self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir('Growing_season',
@@ -578,8 +698,8 @@ class VIs_and_SPEI_correlation:
         # self.reproj()
         # self.land_reproj()
         # self.png_correlation()
-        # self.png_correlation_3_products()
-        self.tif_max_spei_scale()
+        self.png_correlation_3_products()
+        # self.tif_max_spei_scale()
         # self.png_max_spei_scale()
 
         pass
@@ -729,22 +849,24 @@ class VIs_and_SPEI_correlation:
     def png_correlation_3_products(self):
         outdir = join(self.this_class_png, 'png_correlation_3_products')
         T.mk_dir(outdir)
-        outf = join(outdir, 'png_correlation_3_products_notitle.png')
+        T.open_path_and_file(outdir)
+        outf = join(outdir, 'png_correlation_3_products_notitle_vertical.png')
         VIs_list = global_VIs_list
         spei_list = ['spei03', 'spei06', 'spei09', 'spei12',
                      'spei15','spei18', 'spei21', 'spei24',
                      ]
-        fig = plt.figure(figsize=(16, 6))
+        fig = plt.figure(figsize=(8, 12))
         flag = 1
-        for VI in VIs_list:
-            for scale in spei_list:
-                fpath = join(self.this_class_tif, f'correlation_tif/{VI}/r_reproj/{VI}_{scale}_r.tif')
+        for scale in spei_list:
+            for VI in VIs_list:
+                fpath = join(self.this_class_tif, f'correlation_tif/{VI}/r/{VI}_{scale}_r.tif')
                 print(fpath,isfile(fpath))
-                ax = fig.add_subplot(3, 8, flag)
+                ax = fig.add_subplot(8, 3, flag)
                 flag += 1
                 Plot().plot_ortho(fpath, ax, vmin=-0.4,vmax=0.4)
                 # ax.set_title(f'{VI}_{scale}')
         plt.tight_layout()
+        # plt.show()
         plt.savefig(outf, dpi=600)
         plt.close()
         pass
@@ -1534,6 +1656,112 @@ class Moving_window_correlation:
             plt.close()
 
 
+class ELI_vs_moving_window_correlation:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir(
+            'ELI_vs_moving_window_correlation',
+            result_root_this_script, mode=2)
+        pass
+
+    def run(self):
+        # self.plot_scatter_ELI_vs_moving_window_correlation()
+        # self.plot_line_ELI_vs_moving_window_correlation()
+        self.plot_line_ELI_vs_moving_window_lag()
+        pass
+
+    def gen_df(self):
+        ELI_trend_f = join(Water_energy_limited_area_daily().this_class_tif, 'trend/1982-2015/ELI_trend.tif')
+        corr_trend_f = join(Moving_window_correlation().this_class_tif,
+                            'moving_window_spatial_trend/moving_window_trend.tif')
+        lag_trend_f = join(Moving_window_correlation().this_class_tif,
+                           'max_lag_moving_window_spatial_trend/moving_window_trend.tif')
+
+        ELI_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(ELI_trend_f)
+        corr_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(corr_trend_f)
+        lag_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(lag_trend_f)
+
+        all_dict = {'ELI': ELI_spatial_dict, 'corr': corr_spatial_dict, 'lag': lag_spatial_dict}
+        df = T.spatial_dics_to_df(all_dict)
+        df = df.dropna()
+        return df
+
+
+    def plot_scatter_ELI_vs_moving_window_correlation(self):
+        df = self.gen_df()
+        x = df['ELI'].tolist()
+        y1 = df['corr'].tolist()
+        y2 = df['lag'].tolist()
+        # KDE_plot().plot_scatter_hex(x,y1,xlim=(-0.01,0.01),ylim=(-0.05,0.05))
+        # x_y_lim = [-0.01,0.01,-0.05,0.05]
+        x_y_lim = [-0.01,0.01,-0.2,0.2]
+        cmap = KDE_plot().cmap_with_transparency('gray_r')
+        # KDE_plot().plot_scatter(x,y1,x_y_lim=x_y_lim,cmap=cmap,s=10)
+        KDE_plot().plot_scatter(x,y2,x_y_lim=x_y_lim,cmap=cmap,s=10)
+        # plt.title('ELI vs moving window correlation')
+        plt.xlabel('ELI')
+        # plt.ylabel('Moving window correlation')
+        plt.ylabel('Moving window lag')
+        plt.show()
+
+    def plot_line_ELI_vs_moving_window_correlation(self):
+        df = self.gen_df()
+        ELI_bins = np.linspace(-0.005,0.01,30)
+        ELI_col = 'ELI'
+        corr_col = 'corr'
+        lag_col = 'lag'
+
+        df_group,bins_list_str = T.df_bin(df,ELI_col,ELI_bins)
+
+        y_list = []
+        err_list = []
+        for name,df_group_i in df_group:
+            vals = df_group_i[corr_col].tolist()
+            mean = np.nanmean(vals)
+            err,_,_ = T.uncertainty_err(vals)
+            # x_list.append(name)
+            y_list.append(mean)
+            err_list.append(err)
+        plt.figure(figsize=(5,3))
+        plt.plot(bins_list_str,y_list)
+        plt.fill_between(bins_list_str, np.array(y_list)-np.array(err_list), np.array(y_list)+np.array(err_list), alpha=0.5)
+        plt.xlabel('ELI trend')
+        plt.ylabel('correlation trend')
+        plt.xticks(rotation=90)
+        plt.tight_layout()
+        plt.show()
+
+    def plot_line_ELI_vs_moving_window_lag(self):
+        df = self.gen_df()
+        ELI_bins = np.linspace(-0.005,0.01,30)
+        ELI_col = 'ELI'
+        lag_col = 'lag'
+
+        df_group,bins_list_str = T.df_bin(df,ELI_col,ELI_bins)
+
+        y_list = []
+        err_list = []
+        for name,df_group_i in df_group:
+            vals = df_group_i[lag_col].tolist()
+            mean = np.nanmean(vals)
+            err,_,_ = T.uncertainty_err(vals)
+            # x_list.append(name)
+            y_list.append(mean)
+            err_list.append(err)
+        plt.figure(figsize=(5,3))
+        plt.plot(bins_list_str,y_list)
+        plt.fill_between(bins_list_str, np.array(y_list)-np.array(err_list), np.array(y_list)+np.array(err_list), alpha=0.5)
+        plt.xlabel('ELI trend')
+        plt.ylabel('lag trend')
+        plt.xticks(rotation=90)
+        plt.tight_layout()
+        plt.show()
+
+
+
+        pass
+
+
 def line_to_shp(inputlist, outSHPfn):
     ############重要#################
     gdal.SetConfigOption("SHAPE_ENCODING", "GBK")
@@ -1599,6 +1827,7 @@ def gen_world_grid_shp():
 
 def main():
     # Water_energy_limited_area().run()
+    # Water_energy_limited_area_daily().run()
     # Growing_season().run()
     # SPEI_trend().run()
     # VIs_trend().run()
@@ -1607,7 +1836,8 @@ def main():
     # MAT_MAP().run()
     # Isohydricity().run()
     # Aridity_index().run()
-    Moving_window_correlation().run()
+    # Moving_window_correlation().run()
+    ELI_vs_moving_window_correlation().run()
 
     # gen_world_grid_shp()
     pass
