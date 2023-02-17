@@ -1004,12 +1004,12 @@ class Latitude:
 
 def main():
     # Dataframe().run()
-    # Constant_value().run()
+    Constant_value().run()
     # PFTs_and_koppen().run()
     # MAT_MAP().run()
     # Latitude().run()
     # ELI().run()
-    ELI_every_SPEI_scale().run()
+    # ELI_every_SPEI_scale().run()
     pass
 
 

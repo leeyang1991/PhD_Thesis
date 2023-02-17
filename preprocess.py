@@ -1575,6 +1575,7 @@ class GOME2_SIF:
         # self.monthly_compose()
         # self.drop_invalid_value()
         # self.per_pix()
+        # self.pick_year_range()
         # self.anomaly()
         self.detrend()
         pass
@@ -1630,16 +1631,58 @@ class GOME2_SIF:
         Pre_Process().data_transform(fdir,outdir)
 
     def anomaly(self):
-        fdir = join(self.datadir,'per_pix/2007-2018')
-        outdir = join(self.datadir,'anomaly/2007-2018')
+        # year_range = '2007-2018'
+        year_range = '2007-2015'
+        fdir = join(self.datadir,'per_pix',year_range)
+        outdir = join(self.datadir,'anomaly',year_range)
         T.mk_dir(outdir,force=True)
         Pre_Process().cal_anomaly(fdir,outdir)
 
     def detrend(self):
-        fdir = join(self.datadir,'anomaly/2007-2018')
-        outdir = join(self.datadir,'detrend/2007-2018')
+        # year_range = '2007-2018'
+        year_range = '2007-2015'
+        fdir = join(self.datadir,'anomaly',year_range)
+        outdir = join(self.datadir,'detrend',year_range)
         T.mk_dir(outdir,force=True)
         Pre_Process().detrend(fdir,outdir)
+
+    def pick_year_range(self):
+        origin_year_range = '2007-2018'
+        year_range = '2007-2015'
+
+        fdir = join(self.datadir,'per_pix',origin_year_range)
+        year_range_list = []
+        outdir = join(self.datadir,'per_pix',year_range)
+        T.mk_dir(outdir)
+        origin_start_year = int(origin_year_range.split('-')[0])
+        origin_end_year = int(origin_year_range.split('-')[1])
+        start_year = int(year_range.split('-')[0])
+        end_year = int(year_range.split('-')[1])
+        date_list = []
+        for y in range(origin_start_year,origin_end_year + 1):
+            for m in range(1,13):
+                date = f'{y}-{m:02d}'
+                date_list.append(date)
+        pick_date_list = []
+        for y in range(start_year, end_year + 1):
+            for m in range(1, 13):
+                date = f'{y}-{m:02d}'
+                pick_date_list.append(date)
+        for f in T.listdir(fdir):
+            fpath = join(fdir,f)
+            outf = join(outdir,f)
+            dic = T.load_npy(fpath)
+            picked_vals_dic = {}
+            for pix in tqdm(dic):
+                vals = dic[pix]
+                dic_i = dict(zip(date_list,vals))
+                picked_vals = []
+                for date in pick_date_list:
+                    val = dic_i[date]
+                    picked_vals.append(val)
+                picked_vals = np.array(picked_vals)
+                picked_vals_dic[pix] = picked_vals
+            T.save_npy(picked_vals_dic,outf)
 
 
 def main():

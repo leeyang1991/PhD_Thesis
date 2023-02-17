@@ -1,6 +1,6 @@
 # coding=utf-8
 from __init__ import *
-this_root = '/Volumes/SSD1T/PhD_Thesis_project/'
+this_root = '/Volumes/NVME2T/PhD_Thesis_project/'
 data_root = this_root + 'data/'
 results_root = this_root + 'results/'
 temp_root = this_root + 'temp/'
@@ -83,8 +83,8 @@ class Meta_information:
     def path(self,year_range=global_year_range):
         vars_info_dic = {
             'SPEI': {
-            'path':join(data_root, 'SPEI/per_pix_clean',year_range),
-            'path_type':'multi-files',
+                'path':join(data_root, 'SPEI/per_pix_clean',year_range),
+                'path_type':'multi-files',
             },
             'CCI-SM': {
                 'path': join(data_root, f'CCI-SM/detrend/{year_range}/CCI-SM.npy'),
@@ -145,6 +145,14 @@ class Meta_information:
             'VPD': {
                 'path': join(data_root, f'VPD/detrend/{year_range}/VPD.npy'),
                 'path_type': 'file',
+            },
+            'GOME2_SIF-origin': {
+                'path': join(data_root, f'GOME2_SIF/per_pix/{year_range}'),
+                'path_type': 'dir',
+            },
+            'GOME2_SIF-anomaly': {
+                'path': join(data_root, f'GOME2_SIF/detrend/{year_range}'),
+                'path_type': 'dir',
             },
         }
         return vars_info_dic
