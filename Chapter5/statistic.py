@@ -22,8 +22,8 @@ class Dataframe_func:
         df = self.ELI_reclass(df)
         print('add AI_reclass')
         df = self.AI_reclass(df)
-        print('add ELI_significance')
-        df = self.add_ELI_significance(df)
+        # print('add ELI_significance')
+        # df = self.add_ELI_significance(df)
         print('add koppen')
         df = self.add_koppen(df)
 
@@ -32,10 +32,10 @@ class Dataframe_func:
 
     def clean_df(self,df):
 
-        # df = df[df['lat']>=30]
+        df = df[df['lat']>=30]
         # df = df[df['landcover_GLC'] != 'Crop']
         df = df[df['NDVI_MASK'] == 1]
-        df = df[df['ELI_significance'] == 1]
+        # df = df[df['ELI_significance'] == 1]
         return df
 
     def add_GLC_landcover_data_to_df(self, df):
@@ -89,7 +89,8 @@ class Dataframe_func:
         return df
 
     def add_ELI_to_df(self,df):
-        f = join(Water_energy_limited_area().this_class_tif, 'ELI/GLEAM-ET_ERA-SM_Temperature.tif')
+        from Chapter5 import analysis
+        f = join(analysis.Water_energy_limited_area().this_class_tif, 'ELI/GLEAM-ET_ERA-SM_Temperature.tif')
         spatial_dict = DIC_and_TIF().spatial_tif_to_dic(f)
         df = T.add_spatial_dic_to_df(df, spatial_dict, 'ELI')
         return df
@@ -129,12 +130,13 @@ class Dataframe_func:
         df = T.add_spatial_dic_to_df(df, val_dic, 'Koppen')
         return df
 
-    def add_ELI_significance(self,df):
-        f = join(Water_energy_limited_area().this_class_tif, 'significant_pix_r/ELI_Temp_significance.tif')
-        spatial_dict = DIC_and_TIF().spatial_tif_to_dic(f)
-        df = T.add_spatial_dic_to_df(df, spatial_dict, 'ELI_significance')
-
-        return df
+    # def add_ELI_significance(self,df):
+    #     from Chapter5 import analysis
+    #     f = join(Water_energy_limited_area().this_class_tif, 'significant_pix_r/ELI_Temp_significance.tif')
+    #     spatial_dict = DIC_and_TIF().spatial_tif_to_dic(f)
+    #     df = T.add_spatial_dic_to_df(df, spatial_dict, 'ELI_significance')
+    #
+    #     return df
 
 class Dataframe:
 
@@ -170,7 +172,8 @@ class Dataframe:
         return df,dff
 
     def copy_df(self):
-        dff = Resistance_Resilience().dff
+        from Chapter5 import analysis
+        dff = analysis.Resistance_Resilience().dff
         df = T.load_df(dff)
         T.save_df(df, self.dff)
         T.df_to_excel(df, self.dff)
@@ -205,8 +208,8 @@ class Hot_Normal_Rs_Rt:
     def rs_rt_tif(self):
         outdir = join(self.this_class_tif, 'rs_rt_tif')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
-        cols = GLobal_var().get_rs_rt_cols()
+        df = Load_dataframe().load_chapter5()
+        cols = get_rs_rt_cols()
         T.print_head_n(df, 5)
         drought_type_list = T.get_df_unique_val_list(df, 'drought_type')
         for drt in drought_type_list:
@@ -229,8 +232,8 @@ class Hot_Normal_Rs_Rt:
     def rs_rt_bar(self):
         outdir = join(self.this_class_png, 'rs_rt_bar')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
-        cols = GLobal_var().get_rs_rt_cols()
+        df = Load_dataframe().load_chapter5()
+        cols = get_rs_rt_cols()
         y_list = []
         x_list = []
         err_list = []
@@ -259,8 +262,8 @@ class Hot_Normal_Rs_Rt:
     def rs_rt_bar_water_energy_limited(self):
         outdir = join(self.this_class_png, 'rs_rt_bar_water_energy_limited')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
-        cols = GLobal_var().get_rs_rt_cols()
+        df = Load_dataframe().load_chapter5()
+        cols = get_rs_rt_cols()
         limited_area_list = T.get_df_unique_val_list(df, 'ELI_class')
         for ltd in limited_area_list:
             df_ltd = df[df['ELI_class'] == ltd]
@@ -294,8 +297,8 @@ class Hot_Normal_Rs_Rt:
     def rs_rt_bar_Humid_Arid(self):
         outdir = join(self.this_class_png, 'rs_rt_bar_Humid_Arid')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
-        cols = GLobal_var().get_rs_rt_cols()
+        df = Load_dataframe().load_chapter5()
+        cols = get_rs_rt_cols()
         limited_area_list = T.get_df_unique_val_list(df, 'AI_class')
         for ltd in limited_area_list:
             df_ltd = df[df['AI_class'] == ltd]
@@ -329,8 +332,8 @@ class Hot_Normal_Rs_Rt:
         outdir = join(self.this_class_png, 'rs_rt_bar_PFTs')
         T.mk_dir(outdir)
         T.open_path_and_file(outdir)
-        df = GLobal_var().load_df()
-        cols = GLobal_var().get_rs_rt_cols()
+        df = Load_dataframe().load_chapter5()
+        cols = get_rs_rt_cols()
         limited_area_list = T.get_df_unique_val_list(df, 'landcover_GLC')
         for ltd in limited_area_list:
             df_ltd = df[df['landcover_GLC'] == ltd]
@@ -364,8 +367,8 @@ class Hot_Normal_Rs_Rt:
     def rs_rt_hist(self):
         outdir = join(self.this_class_png, 'rs_rt_hist')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
-        cols = GLobal_var().get_rs_rt_cols()
+        df = Load_dataframe().load_chapter5()
+        cols = get_rs_rt_cols()
         # DIC_and_TIF().plot_df_spatial_pix(df,land_tif)
         # plt.show()
         # print(cols)
@@ -406,7 +409,7 @@ class Hot_Normal_Rs_Rt:
         # eli_col = 'max_lag'
         lc_col = 'landcover_GLC'
         koppen_col = 'Koppen'
-        df = GLobal_var().load_df()
+        df = Load_dataframe().load_chapter5()
         drought_type_list = global_drought_type_list
         lc_list = global_lc_list
         koppen_list = global_koppen_list
@@ -453,9 +456,9 @@ class Hot_Normal_Rs_Rt:
     def rs_rt_pfts_koppen_area_ratio_scatter(self):
         outdir = join(self.this_class_png, 'rs_rt_pfts_koppen_area_ratio_scatter')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
+        df = Load_dataframe().load_chapter5()
         threshold = 0.05
-        rs_cols = GLobal_var().get_rs_rt_cols()
+        rs_cols = get_rs_rt_cols()
         drought_type_list = global_drought_type_list
         lc_list = global_lc_list
         koppen_list = global_koppen_list
@@ -500,9 +503,9 @@ class Hot_Normal_Rs_Rt:
     def rs_rt_area_ratio_bar(self):
         outdir = join(self.this_class_png, 'rs_rt_area_ratio_bar')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
+        df = Load_dataframe().load_chapter5()
         threshold = 0.05
-        rs_cols = GLobal_var().get_rs_rt_cols()
+        rs_cols = get_rs_rt_cols()
         drought_type_list = global_drought_type_list
         ELI_class_list = global_ELI_class_list
         data = pd.DataFrame()
@@ -537,9 +540,9 @@ class Hot_Normal_Rs_Rt:
     def rs_rt_area_ratio_ELI_matrix(self):
         outdir = join(self.this_class_png, 'rs_rt_area_ratio_ELI_matrix')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
+        df = Load_dataframe().load_chapter5()
         threshold = global_threshold
-        rs_cols = GLobal_var().get_rs_rt_cols()
+        rs_cols = get_rs_rt_cols()
         # rs_cols.remove('rt')
         drought_type_list = global_drought_type_list
         ELI_col = 'ELI'
@@ -601,7 +604,7 @@ class ELI_AI_gradient:
     def lag_ELI(self):
         outdir = join(self.this_class_png, 'lag_ELI')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
+        df = Load_dataframe().load_chapter5()
         T.print_head_n(df, 5)
         df_group_dict = T.df_groupby(df, 'pix')
 
@@ -644,7 +647,7 @@ class ELI_AI_gradient:
     def lag_AI(self):
         outdir = join(self.this_class_png, 'lag_AI')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
+        df = Load_dataframe().load_chapter5()
         T.print_head_n(df, 5)
         df_group_dict = T.df_groupby(df, 'pix')
 
@@ -685,7 +688,7 @@ class ELI_AI_gradient:
     def scale_ELI(self):
         outdir = join(self.this_class_png, 'scale_ELI')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
+        df = Load_dataframe().load_chapter5()
         T.print_head_n(df, 5)
         df_group_dict = T.df_groupby(df, 'pix')
 
@@ -727,7 +730,7 @@ class ELI_AI_gradient:
     def scale_AI(self):
         outdir = join(self.this_class_png, 'scale_AI')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
+        df = Load_dataframe().load_chapter5()
         T.print_head_n(df, 5)
         df_group_dict = T.df_groupby(df, 'pix')
 
@@ -768,10 +771,10 @@ class ELI_AI_gradient:
     def rt_rs_ELI(self):
         outdir = join(self.this_class_png, 'rt_rs_ELI')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
+        df = Load_dataframe().load_chapter5()
         T.print_head_n(df, 5)
         drought_type_list = global_drought_type_list
-        rs_rt_var_list = GLobal_var().get_rs_rt_cols()
+        rs_rt_var_list = get_rs_rt_cols()
         for drt in drought_type_list:
             df_drt = df[df['drought_type'] == drt]
             df_group_dict = T.df_groupby(df_drt, 'pix')
@@ -817,10 +820,10 @@ class ELI_AI_gradient:
     def rt_rs_AI(self):
         outdir = join(self.this_class_png, 'rt_rs_AI')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
+        df = Load_dataframe().load_chapter5()
         T.print_head_n(df, 5)
         drought_type_list = global_drought_type_list
-        rs_rt_var_list = GLobal_var().get_rs_rt_cols()
+        rs_rt_var_list = get_rs_rt_cols()
         for drt in drought_type_list:
             df_drt = df[df['drought_type'] == drt]
             df_group_dict = T.df_groupby(df_drt, 'pix')
@@ -866,7 +869,7 @@ class ELI_AI_gradient:
     def max_r_ELI(self):
         outdir = join(self.this_class_png, 'max_r_ELI')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
+        df = Load_dataframe().load_chapter5()
         df_group_dict = T.df_groupby(df, 'pix')
 
         lag_list = []
@@ -934,12 +937,12 @@ class Rt_Rs_change_overtime:
     def every_year(self):
         outdir = join(self.this_class_png, 'every_year')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
+        df = Load_dataframe().load_chapter5()
         drought_year_col = 'drought_year'
         ELI_class_col = 'ELI_class'
         ELI_class_list = T.get_df_unique_val_list(df, ELI_class_col)
         drought_type_list = global_drought_type_list
-        rs_rt_var_list = GLobal_var().get_rs_rt_cols()
+        rs_rt_var_list = get_rs_rt_cols()
 
         for ltd in ELI_class_list:
             df_ltd = df[df[ELI_class_col] == ltd]
@@ -970,12 +973,12 @@ class Rt_Rs_change_overtime:
     def every_5_year(self):
         outdir = join(self.this_class_png, 'every_5_year')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
+        df = Load_dataframe().load_chapter5()
         drought_year_col = 'drought_year'
         ELI_class_col = 'ELI_class'
         ELI_class_list = T.get_df_unique_val_list(df, ELI_class_col)
         drought_type_list = global_drought_type_list
-        rs_rt_var_list = GLobal_var().get_rs_rt_cols()
+        rs_rt_var_list = get_rs_rt_cols()
 
         group_year_list = [
             [1982, 1983, 1984, 1985, 1986],
@@ -1020,12 +1023,12 @@ class Rt_Rs_change_overtime:
     def every_5_year_area_ratio(self):
         outdir = join(self.this_class_png, 'every_5_year_area_ratio')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
+        df = Load_dataframe().load_chapter5()
         drought_year_col = 'drought_year'
         ELI_class_col = 'ELI_class'
         ELI_class_list = T.get_df_unique_val_list(df, ELI_class_col)
         drought_type_list = global_drought_type_list
-        rs_rt_var_list = GLobal_var().get_rs_rt_cols()
+        rs_rt_var_list = get_rs_rt_cols()
         threshold = global_threshold
         group_year_list = [
             [1982, 1983, 1984, 1985, 1986],
@@ -1071,9 +1074,9 @@ class Rt_Rs_change_overtime:
 
         outdir = join(self.this_class_png, 'every_1_year_area_ratio_matrix')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
+        df = Load_dataframe().load_chapter5()
         threshold = global_threshold
-        rs_cols = GLobal_var().get_rs_rt_cols()
+        rs_cols = get_rs_rt_cols()
         # rs_cols.remove('rt')
         drought_type_list = global_drought_type_list
         # group_year_list = [
@@ -1143,9 +1146,9 @@ class Rt_Rs_change_overtime:
 
         outdir = join(self.this_class_png, 'every_5_year_area_ratio_matrix')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
+        df = Load_dataframe().load_chapter5()
         threshold = global_threshold
-        rs_cols = GLobal_var().get_rs_rt_cols()
+        rs_cols = get_rs_rt_cols()
         # rs_cols.remove('rt')
         drought_type_list = global_drought_type_list
         group_year_list = [
@@ -1213,12 +1216,12 @@ class Rt_Rs_change_overtime:
     def every_10_year(self):
         outdir = join(self.this_class_png, 'every_10_year')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
+        df = Load_dataframe().load_chapter5()
         drought_year_col = 'drought_year'
         ELI_class_col = 'ELI_class'
         ELI_class_list = T.get_df_unique_val_list(df, ELI_class_col)
         drought_type_list = global_drought_type_list
-        rs_rt_var_list = GLobal_var().get_rs_rt_cols()
+        rs_rt_var_list = get_rs_rt_cols()
 
         group_year_list = [
             [1982, 1983, 1984, 1985, 1986, 1987, 1988, 1989, 1990, 1991],
@@ -1260,9 +1263,9 @@ class Rt_Rs_change_overtime:
     def two_periods(self):
         outdir = join(self.this_class_arr, 'two_periods')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
+        df = Load_dataframe().load_chapter5()
         rt_col = 'rt'
-        rs_cols = GLobal_var().get_rs_rt_cols()
+        rs_cols = get_rs_rt_cols()
         rs_cols.remove(rt_col)
         # print(rs_col)
         # exit()
@@ -1305,7 +1308,7 @@ class Rt_Rs_change_overtime:
         outdir = join(self.this_class_png,'two_periods_koppen_PFTs')
         T.mk_dir(outdir)
         rt_col = 'rt'
-        rs_cols = GLobal_var().get_rs_rt_cols()
+        rs_cols = get_rs_rt_cols()
         rs_cols.remove(rt_col)
         drought_type_list = global_drought_type_list
         # drought_type_list = global_drought_type_list[1:]
@@ -1348,7 +1351,7 @@ class Rt_Rs_change_overtime:
         outdir = join(self.this_class_png,'two_periods_water_energy_PFTs')
         T.mk_dir(outdir)
         rt_col = 'rt'
-        rs_cols = GLobal_var().get_rs_rt_cols()
+        rs_cols = get_rs_rt_cols()
         rs_cols.remove(rt_col)
         drought_type_list = global_drought_type_list
         # drought_type_list = global_drought_type_list[1:]
@@ -1391,7 +1394,7 @@ class Rt_Rs_change_overtime:
         threshold = global_threshold
         T.mk_dir(outdir)
         rt_col = 'rt'
-        rs_cols = GLobal_var().get_rs_rt_cols()
+        rs_cols = get_rs_rt_cols()
         rs_cols.remove(rt_col)
         drought_type_list = global_drought_type_list
         # drought_type_list = global_drought_type_list[1:]
@@ -1461,12 +1464,12 @@ class Drought_events_process:
         T.mk_dir(outdir)
         outf = join(outdir, 'dataframe.df')
         var_list = self.var_list
-        df = GLobal_var().load_df()
+        df = Load_dataframe().load_chapter5()
         # gs_dict = Growing_season().longterm_growing_season()
         gs = global_gs
         year_list = list(range(global_start_year, global_end_year + 1))
         for var in var_list:
-            spatial_dict = GLobal_var().load_data(var)
+            spatial_dict = Meta_information().load_data(var)
             spatial_dict_gs_monthly = {}
             for pix in tqdm(spatial_dict,desc=f'monthly gs {var}'):
                 vals = spatial_dict[pix]
@@ -1653,7 +1656,7 @@ class Rt_Rs_relationship:
         outdir = join(self.this_class_png, 'rs_rt')
         T.mk_dir(outdir)
 
-        rs_rt_col = GLobal_var().get_rs_rt_cols()
+        rs_rt_col = get_rs_rt_cols()
         rs_rt_col.remove('rt')
         rs_col = rs_rt_col
         ltd_var = 'ELI_class'
@@ -1661,7 +1664,7 @@ class Rt_Rs_relationship:
         drought_type_list = global_drought_type_list
         drought_type_color = {'normal-drought': 'b', 'hot-drought': 'r'}
         drought_type_cmap = {'normal-drought': 'Blues', 'hot-drought': 'Reds'}
-        df = GLobal_var().load_df()
+        df = Load_dataframe().load_chapter5()
         for ltd in limited_area_list:
             df_ltd = df[df[ltd_var] == ltd]
             for rs_col_i in rs_col:
@@ -1726,8 +1729,7 @@ class Over_shoot_drought:
     def pick_overshoot(self):
         outdir= join(self.this_class_arr, 'pick_overshoot')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
-        dff = GLobal_var().dff()
+        df = Load_dataframe().load_chapter5()
         # dff = join(Drought_events_proess().this_class_arr, 'variables_in_drought_proess_monthly', 'dataframe.df')
         # df = T.load_df(dff)
         VI_name = 'NDVI'
@@ -2069,7 +2071,7 @@ class Over_shoot_drought:
                 plt.close()
 
     def over_shoot_ratio_ELI(self):
-        df = GLobal_var().load_df()
+        df = Load_dataframe().load_chapter5()
         outdir = join(self.this_class_png, 'over_shoot_ratio_ELI')
         T.mk_dir(outdir)
         ltd_var = 'ELI_class'
@@ -2126,8 +2128,8 @@ class Over_shoot_drought:
     def over_shoot_pfts_koppen_area_ratio_scatter(self):
         outdir = join(self.this_class_png, 'over_shoot_pfts_koppen_area_ratio_scatter')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
-        rs_cols = GLobal_var().get_rs_rt_cols()
+        df = Load_dataframe().load_chapter5()
+        rs_cols = get_rs_rt_cols()
         drought_type_list = global_drought_type_list
         lc_list = global_lc_list
         koppen_list = global_koppen_list
@@ -2176,7 +2178,7 @@ class Over_shoot_drought:
     def over_shoot_every_5_year_area_ratio(self):
         outdir = join(self.this_class_png, 'over_shoot_every_5_year_area_ratio')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
+        df = Load_dataframe().load_chapter5()
         drought_year_col = 'drought_year'
         ELI_class_col = 'ELI_class'
         col = 'over_shoot'
@@ -2230,8 +2232,8 @@ class Over_shoot_drought:
     def rs_rt_vs_overshoot_ELI_matrix(self):
         outdir = join(self.this_class_png, 'rs_rt_vs_overshoot_ELI_matrix')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
-        rs_cols = GLobal_var().get_rs_rt_cols()
+        df = Load_dataframe().load_chapter5()
+        rs_cols = get_rs_rt_cols()
         drought_type_list = global_drought_type_list
         rs_bins = np.arange(0.9, 1.1, 0.02)
         ELI_bins = np.arange(-0.6, 0.65, 0.1)
@@ -2276,8 +2278,8 @@ class Over_shoot_drought:
     def rt_vs_overshoot(self):
         outdir = join(self.this_class_png, 'rt_vs_overshoot')
         T.mk_dir(outdir)
-        df = GLobal_var().load_df()
-        rs_cols = GLobal_var().get_rs_rt_cols()
+        df = Load_dataframe().load_chapter5()
+        rs_cols = get_rs_rt_cols()
         drought_type_list = global_drought_type_list
         # rs_bins = np.arange(0.9, 1.1, 0.02)
         rs_bins = np.arange(-2.5, -0., 0.2)
@@ -2329,7 +2331,7 @@ class Over_shoot_drought:
         T.print_head_n(df)
         over_shoot_col = 'over_shoot'
         over_shoot_list = [0,1]
-        rs_cols = GLobal_var().get_rs_rt_cols()
+        rs_cols = get_rs_rt_cols()
         ELI_class_list = global_ELI_class_list
         # df = df[df['drought_type'] == 'hot-drought']
         df = df[df['ELI_class'] == 'Energy-Limited']
@@ -2408,7 +2410,6 @@ class Over_shoot_drought:
         pass
 
     def compare_overshoot_and_longterm_correlation(self):
-        # todo: post drought ELI change
         import analysis
         fdir = join(self.this_class_tif,'post_drought_correlation')
         max_corr_tif = join(analysis.Max_Scale_and_Lag_correlation_SPI().this_class_tif,

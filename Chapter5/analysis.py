@@ -3,54 +3,6 @@ from meta_info import *
 result_root_this_script = join(results_root, 'Chapter5/analysis')
 import xymap
 
-class GLobal_var:
-    def __init__(self):
-
-        pass
-
-    def load_data(self, var_i, year_range=global_year_range):
-        data_path_dict = Meta_information().path(year_range)
-        data_path = data_path_dict[var_i]['path']
-        path_type = data_path_dict[var_i]['path_type']
-        if path_type == 'file':
-            spatial_dict = T.load_npy(data_path)
-        elif path_type == 'dir':
-            spatial_dict = T.load_npy_dir(data_path)
-        elif path_type == 'multi-files':
-            spatial_dict = {}
-            for f in T.listdir(data_path):
-                print(f'loading {f}')
-                key = f.split('.')[0]
-                spatial_dict_i = T.load_npy(join(data_path, f))
-                spatial_dict[key] = spatial_dict_i
-        else:
-            raise ValueError('path_type not recognized')
-        return spatial_dict
-
-    def load_df(self):
-        import statistic
-        dff = join(statistic.Dataframe().dff)
-        df = T.load_df(dff)
-        cols = self.get_rs_rt_cols()
-        for col in cols:
-            df[df[col] > 1.4] = np.nan
-            df[df[col] < 0.6] = np.nan
-        df = df[df['lat'] > 30]
-        df = df.drop_duplicates()
-        return df
-
-    def dff(self):
-        import statistic
-        dff = join(statistic.Dataframe().dff)
-        return dff
-
-    def get_rs_rt_cols(self):
-        post_n_list = [1, 2, 3, 4]
-        cols = ['rt']
-        for n in post_n_list:
-            cols.append('rs_{}'.format(n))
-        return cols
-
 
 class Water_energy_limited_area:
 
@@ -80,8 +32,8 @@ class Water_energy_limited_area:
     def kendall_corr(self, var_1, var_2, outdir):
         T.mk_dir(outdir)
         outf = join(outdir, f'{var_1}_{var_2}.df')
-        spatial_dict_1 = GLobal_var().load_data(var_1)
-        spatial_dict_2 = GLobal_var().load_data(var_2)
+        spatial_dict_1 = Meta_information().load_data(var_1)
+        spatial_dict_2 = Meta_information().load_data(var_2)
         spatial_dict_corr = {}
         spatial_dict_corr_p = {}
         for pix in tqdm(spatial_dict_1):
@@ -313,8 +265,8 @@ class Max_Scale_and_Lag_correlation_SPEI:
         lag_list = list(range(5))
 
         # gs_dict = Growing_season().longterm_growing_season()
-        NDVI_spatial_dict = GLobal_var().load_data('NDVI')
-        SPEI_spatial_dicts = GLobal_var().load_data('SPEI')
+        NDVI_spatial_dict = Meta_information().load_data('NDVI')
+        SPEI_spatial_dicts = Meta_information().load_data('SPEI')
         dict_all = {}
         for lag in lag_list:
             for scale in SPEI_spatial_dicts:
@@ -390,8 +342,8 @@ class Max_Scale_and_Lag_correlation_SPEI:
         outf = join(outdir, 'NDVI_SPEI_correlation.df')
 
         # gs_dict = Growing_season().longterm_growing_season()
-        NDVI_spatial_dict = GLobal_var().load_data('NDVI')
-        SPEI_spatial_dicts = GLobal_var().load_data('SPEI')
+        NDVI_spatial_dict = Meta_information().load_data('NDVI')
+        SPEI_spatial_dicts = Meta_information().load_data('SPEI')
         dict_all = {}
         for scale in SPEI_spatial_dicts:
             SPEI_spatial_dict = SPEI_spatial_dicts[scale]
@@ -1061,7 +1013,7 @@ class Pick_Drought_Events:
         T.mk_dir(outdir)
         threshold_quantile = 75
         # gs_dict = Growing_season().longterm_growing_season()
-        t_anomaly_dic = GLobal_var().load_data('Temperature')
+        t_anomaly_dic = Meta_information().load_data('Temperature')
         drought_events_dir = join(self.this_class_arr, 'picked_events')
         for f in T.listdir(drought_events_dir):
             scale = f.split('.')[0]
@@ -1105,7 +1057,7 @@ class Pick_Drought_Events:
         outdir = join(self.this_class_arr, 'picked_events')
         T.mk_dir(outdir)
         threshold = -2
-        SPI_dict_all = GLobal_var().load_data('SPI')
+        SPI_dict_all = Meta_information().load_data('SPI')
 
         for scale in SPI_dict_all:
             SPI_dict = SPI_dict_all[scale]
@@ -1295,6 +1247,126 @@ class Pick_Drought_Events:
                 single_events_list.append(drought_year_list[i])
         return single_events_list
 
+class Drought_events_spatial_temporal_SPI12:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('Drought_events_spatial_temporal_SPI12', result_root_this_script, mode=2)
+        pass
+
+    def run(self):
+        # self.gen_df()
+        # self.add_variables()
+        # self.tif_drought_number()
+        # self.plot_spatial_drought_number()
+        self.drought_number_time_series()
+        pass
+
+
+    def gen_df(self):
+        fdir = join(Pick_Drought_Events().this_class_arr,'normal_hot_events')
+        outdir = join(self.this_class_arr,'dataframe')
+        T.mk_dir(outdir,force=True)
+        hot_drought_f = join(fdir,'hot-drought_spi12.npy')
+        normal_drought_f = join(fdir,'normal-drought_spi12.npy')
+        hot_drought_dic = T.load_npy(hot_drought_f)
+        normal_drought_dic = T.load_npy(normal_drought_f)
+
+        pix_list = []
+        drought_year_list = []
+        drought_type_list = []
+        for pix in hot_drought_dic:
+            events = hot_drought_dic[pix]
+            for year in events:
+                pix_list.append(pix)
+                drought_year_list.append(year)
+                drought_type_list.append('hot-drought')
+        for pix in normal_drought_dic:
+            events = normal_drought_dic[pix]
+            for year in events:
+                pix_list.append(pix)
+                drought_year_list.append(year)
+                drought_type_list.append('normal-drought')
+        df = pd.DataFrame()
+        df['pix'] = pix_list
+        df['drought_year'] = drought_year_list
+        df['drought_type'] = drought_type_list
+        outf = join(outdir,'drought_events.df')
+        T.save_df(df,outf)
+        T.df_to_excel(df,outf)
+
+    def add_variables(self):
+        from Chapter5 import statistic
+        dff = join(self.this_class_arr,'dataframe/drought_events.df')
+        df = T.load_df(dff)
+        df = statistic.Dataframe_func(df).df
+        T.save_df(df, dff)
+        T.df_to_excel(df, dff)
+
+    def tif_drought_number(self):
+        dff = join(self.this_class_arr,'dataframe/drought_events.df')
+        df = T.load_df(dff)
+        outdir = join(self.this_class_tif,'drought_number')
+        T.mk_dir(outdir,force=True)
+        T.open_path_and_file(outdir)
+
+        drought_type_list = global_drought_type_list
+
+        for drt in drought_type_list:
+            df_drt = df[df['drought_type'] == drt]
+            df_group_dict = T.df_groupby(df_drt,'pix')
+            spatial_dict = {}
+            for pix in df_group_dict:
+                df_i = df_group_dict[pix]
+                drought_number = len(df_i)
+                if drought_number == 0:
+                    continue
+                spatial_dict[pix] = drought_number
+            arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
+            outf = join(outdir,drt+'.tif')
+            DIC_and_TIF().arr_to_tif(arr,outf)
+
+    def plot_spatial_drought_number(self):
+        fdir = join(self.this_class_tif,'drought_number')
+        outdir = join(self.this_class_png,'spatial_drought_number')
+        T.mk_dir(outdir,force=True)
+        T.open_path_and_file(outdir)
+        for f in T.listdir(fdir):
+            if not f.endswith('.tif'):
+                continue
+            fpath = join(fdir,f)
+            plt.figure(figsize=(5, 5))
+            m,ret1 = Plot().plot_ortho(fpath,vmin=1,vmax=4)
+            m.colorbar(ret1,location='bottom',pad='5%')
+            outf = join(outdir,f.replace('.tif','.png'))
+            plt.savefig(outf,dpi=600)
+            plt.close()
+
+    def drought_number_time_series(self):
+        dff = join(self.this_class_arr, 'dataframe/drought_events.df')
+        df = T.load_df(dff)
+        # outdir = join(self.this_class_tif, 'drought_number_time_series')
+        # T.mk_dir(outdir, force=True)
+        # T.open_path_and_file(outdir)
+
+        year_list = list(range(global_start_year,global_end_year+1))
+        df_group_dict = T.df_groupby(df,'drought_year')
+        for year in year_list:
+            df_i = df_group_dict[year]
+            print(df_i)
+            exit()
+
+
+
+        pass
+
+
+    def drought_affected_area_time_series(self):
+        dff = join(self.this_class_arr, 'dataframe/drought_events.df')
+        df = T.load_df(dff)
+        T.print_head_n(df)
+        pass
+
 
 class Resistance_Resilience:
 
@@ -1404,7 +1476,7 @@ class Resistance_Resilience:
     def cal_rt(self, df):
         gs = global_gs
 
-        NDVI_spatial_dict = GLobal_var().load_data('NDVI-origin')
+        NDVI_spatial_dict = Meta_information().load_data('NDVI-origin')
         # gs_dict = Growing_season().longterm_growing_season()
         year_list = list(range(global_start_year, global_end_year + 1))
         rt_list = []
@@ -1442,7 +1514,7 @@ class Resistance_Resilience:
         post_n_list = [1, 2, 3, 4]
         # post_n_list = [4]
         gs = global_gs
-        NDVI_spatial_dict = GLobal_var().load_data('NDVI-origin')
+        NDVI_spatial_dict = Meta_information().load_data('NDVI-origin')
         # gs_dict = Growing_season().longterm_growing_season()
         year_list = list(range(global_start_year, global_end_year + 1))
         for post_year in post_n_list:
@@ -1488,7 +1560,7 @@ class Resistance_Resilience:
         return df
 
     def rt_tif(self, df):
-        NDVI_dict = GLobal_var().load_data('NDVI-origin')
+        NDVI_dict = Meta_information().load_data('NDVI-origin')
         outdir = join(self.this_class_tif, 'rt')
         T.mk_dir(outdir)
         drought_type_list = T.get_df_unique_val_list(df, 'drought_type')
@@ -1639,11 +1711,12 @@ def gen_world_grid_shp():
 
 def main():
     # Water_energy_limited_area().run()
-    Water_energy_limited_area_daily().run()
+    # Water_energy_limited_area_daily().run()
     # Growing_season().run()
     # Max_Scale_and_Lag_correlation_SPEI().run()
     # Max_Scale_and_Lag_correlation_SPI().run()
     # Pick_Drought_Events().run()
+    Drought_events_spatial_temporal_SPI12().run()
     # Resistance_Resilience().run()
 
     # gen_world_grid_shp()

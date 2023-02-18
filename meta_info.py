@@ -195,16 +195,24 @@ class Load_dataframe:
         return df
 
     def load_chapter4(self):
-        from Chapter4 import statistic
+
         raise NotImplementedError
-        # dff = statistic.Dataframe().dff
-        # df = T.load_df(dff)
-        pass
 
     def load_chapter5(self):
         from Chapter5 import statistic
-        raise NotImplementedError
-        # dff = statistic.Dataframe().dff
-        # df = T.load_df(dff)
-        pass
+        dff = statistic.Dataframe().dff
+        df = T.load_df(dff)
+        cols = get_rs_rt_cols()
+        for col in cols:
+            df[df[col] > 1.4] = np.nan
+            df[df[col] < 0.6] = np.nan
+        df = df[df['lat'] > 30]
+        df = df.drop_duplicates()
+        return df
 
+def get_rs_rt_cols():
+    post_n_list = [1, 2, 3, 4]
+    cols = ['rt']
+    for n in post_n_list:
+        cols.append('rs_{}'.format(n))
+    return cols
