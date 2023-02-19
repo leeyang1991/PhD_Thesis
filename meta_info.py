@@ -122,13 +122,21 @@ class Meta_information:
                 'path': join(data_root, 'VOD_Xband/per_pix_anomaly_detrend', year_range),
                 'path_type': 'dir',
             },
-            'Temperature': {
+            'Temperature-detrend': {
                 'path': join(data_root, f'CRU_tmp/detrend/{year_range}/temp.npy'),
                 'path_type': 'file',
             },
-            'Precipitation': {
+            'Temperature-origin': {
+                'path': join(data_root, f'CRU_tmp/per_pix/{year_range}'),
+                'path_type': 'dir',
+            },
+            'Precipitation-detrend': {
                 'path': join(data_root, f'CRU_precip/detrend/{year_range}/precip.npy'),
                 'path_type': 'file',
+            },
+            'Precipitation-origin': {
+                'path': join(data_root, f'CRU_precip/per_pix/{year_range}'),
+                'path_type': 'dir',
             },
             'Radiation': {
                 'path': join(data_root, f'Terraclimate/srad/detrend/{year_range}/srad.npy'),

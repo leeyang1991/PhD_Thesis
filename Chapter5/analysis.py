@@ -1658,6 +1658,227 @@ class Drought_events_spatial_temporal_SPI12:
             plt.colorbar()
         plt.show()
 
+class Temperature_spatial_temporal_analysis:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('Temperature_spatial_temporal_analysis', result_root_this_script, mode=2)
+        pass
+
+    def run(self):
+        # self.spatial_trend()
+        # self.plot_temperature_trend()
+        # self.spatial_trend_two_periods()
+        self.plot_temperature_trend_two_periods()
+        pass
+
+    def spatial_trend(self):
+        temperature_spatial_dict = Meta_information().load_data('Temperature-origin')
+        outdir = join(self.this_class_tif,'spatial_trend')
+        T.mk_dir(outdir)
+
+        gs = global_gs
+        spatial_trend_dict = {}
+        spatial_trend_p_dict = {}
+        for pix in tqdm(temperature_spatial_dict):
+            vals = temperature_spatial_dict[pix]
+            vals = T.mask_999999_arr(vals,warning=False)
+            if T.is_all_nan(vals):
+                continue
+            vals_gs = T.monthly_vals_to_annual_val(vals,gs)
+            try:
+                a,b,r,p = T.nan_line_fit(list(range(len(vals_gs))),vals_gs)
+                spatial_trend_dict[pix] = a
+                spatial_trend_p_dict[pix] = p
+            except:
+                continue
+        DIC_and_TIF().pix_dic_to_tif(spatial_trend_dict,join(outdir,'spatial_trend.tif'))
+        DIC_and_TIF().pix_dic_to_tif(spatial_trend_p_dict,join(outdir,'spatial_trend_p.tif'))
+
+    def plot_temperature_trend(self):
+        fdir = join(self.this_class_tif,'spatial_trend')
+        outdir = join(self.this_class_png,'spatial_trend')
+        T.mk_dir(outdir)
+        outf = join(outdir,'spatial_trend.png')
+        fpath = join(fdir,'spatial_trend.tif')
+        fpath_p = join(fdir,'spatial_trend_p.tif')
+
+        plt.figure(figsize=(5, 5))
+        m, ret1 = Plot().plot_ortho(fpath, vmin=-0.1, vmax=0.1, cmap='RdBu_r')
+        Plot().plot_ortho_significance_scatter(m,fpath_p,temp_root,s=5)
+        m.colorbar(ret1, location='bottom', pad='5%')
+        plt.savefig(outf, dpi=600)
+        plt.close()
+
+    def spatial_trend_two_periods(self):
+        temperature_spatial_dict = Meta_information().load_data('Temperature-origin')
+        outdir = join(self.this_class_tif,'spatial_trend_two_periods')
+        T.mk_dir(outdir)
+        first_period = [1982, 1999]
+        second_period = [2000, 2015]
+        period_list = [first_period, second_period]
+
+        for period in period_list:
+            pick_index = [period[0] - 1982, period[1] - 1982 + 1]
+            # print(pick_index)
+            gs = global_gs
+            spatial_trend_dict = {}
+            spatial_trend_p_dict = {}
+            for pix in tqdm(temperature_spatial_dict):
+                r,c = pix
+                if r > 180:
+                    continue
+                vals = temperature_spatial_dict[pix]
+                vals = T.mask_999999_arr(vals,warning=False)
+                if T.is_all_nan(vals):
+                    continue
+                vals_gs = T.monthly_vals_to_annual_val(vals,gs)
+                vals_gs_pick = vals_gs[pick_index[0]:pick_index[1]]
+                try:
+                    a,b,r,p = T.nan_line_fit(list(range(len(vals_gs_pick))),vals_gs_pick)
+                    spatial_trend_dict[pix] = a
+                    spatial_trend_p_dict[pix] = p
+                except:
+                    continue
+            outf_trend = join(outdir,'spatial_trend_{}-{}.tif'.format(period[0],period[1]))
+            outf_trend_p = join(outdir,'spatial_trend_p_{}-{}.tif'.format(period[0],period[1]))
+            DIC_and_TIF().pix_dic_to_tif(spatial_trend_dict,outf_trend)
+            DIC_and_TIF().pix_dic_to_tif(spatial_trend_p_dict,outf_trend_p)
+
+    def plot_temperature_trend_two_periods(self):
+        fdir = join(self.this_class_tif,'spatial_trend_two_periods')
+        outdir = join(self.this_class_png,'spatial_trend_two_periods')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+
+        first_period = [1982, 1999]
+        second_period = [2000, 2015]
+        period_list = [first_period, second_period]
+        for period in period_list:
+            suffix = '{}-{}'.format(period[0],period[1])
+            outf = join(outdir,f'spatial_trend_{suffix}.png')
+            fpath = join(fdir,f'spatial_trend_{suffix}.tif')
+            fpath_p = join(fdir,f'spatial_trend_p_{suffix}.tif')
+            plt.figure(figsize=(5, 5))
+            m, ret1 = Plot().plot_ortho(fpath, vmin=-0.1, vmax=0.1, cmap='RdBu_r')
+            Plot().plot_ortho_significance_scatter(m,fpath_p,temp_root,s=5)
+            m.colorbar(ret1, location='bottom', pad='5%')
+            plt.savefig(outf, dpi=600)
+            plt.close()
+
+class Precipitation_spatial_temporal_analysis:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('Precipitation_spatial_temporal_analysis', result_root_this_script, mode=2)
+        pass
+
+    def run(self):
+        # self.spatial_trend()
+        # self.plot_precipitation_trend()
+        # self.spatial_trend_two_periods()
+        self.plot_precipitation_trend_two_periods()
+        pass
+
+    def spatial_trend(self):
+        temperature_spatial_dict = Meta_information().load_data('Precipitation-origin')
+        outdir = join(self.this_class_tif,'spatial_trend')
+        T.mk_dir(outdir)
+
+        gs = global_gs
+        spatial_trend_dict = {}
+        spatial_trend_p_dict = {}
+        for pix in tqdm(temperature_spatial_dict):
+            vals = temperature_spatial_dict[pix]
+            vals = T.mask_999999_arr(vals,warning=False)
+            if T.is_all_nan(vals):
+                continue
+            vals_gs = T.monthly_vals_to_annual_val(vals,gs)
+            try:
+                a,b,r,p = T.nan_line_fit(list(range(len(vals_gs))),vals_gs)
+                spatial_trend_dict[pix] = a
+                spatial_trend_p_dict[pix] = p
+            except:
+                continue
+        DIC_and_TIF().pix_dic_to_tif(spatial_trend_dict,join(outdir,'spatial_trend.tif'))
+        DIC_and_TIF().pix_dic_to_tif(spatial_trend_p_dict,join(outdir,'spatial_trend_p.tif'))
+
+    def plot_precipitation_trend(self):
+        fdir = join(self.this_class_tif,'spatial_trend')
+        outdir = join(self.this_class_png,'spatial_trend')
+        T.mk_dir(outdir)
+        outf = join(outdir,'spatial_trend.png')
+        fpath = join(fdir,'spatial_trend.tif')
+        fpath_p = join(fdir,'spatial_trend_p.tif')
+
+        plt.figure(figsize=(5, 5))
+        m, ret1 = Plot().plot_ortho(fpath, vmin=-1, vmax=1, cmap='RdBu')
+        # m, ret1 = Plot().plot_ortho(fpath, cmap='RdBu_r')
+        Plot().plot_ortho_significance_scatter(m,fpath_p,temp_root,s=10,linewidths=1)
+        m.colorbar(ret1, location='bottom', pad='5%')
+        # plt.show()
+        plt.savefig(outf, dpi=600)
+        plt.close()
+
+    def spatial_trend_two_periods(self):
+        temperature_spatial_dict = Meta_information().load_data('Precipitation-origin')
+        outdir = join(self.this_class_tif,'spatial_trend_two_periods')
+        T.mk_dir(outdir)
+        first_period = [1982, 1999]
+        second_period = [2000, 2015]
+        period_list = [first_period, second_period]
+
+        for period in period_list:
+            pick_index = [period[0] - 1982, period[1] - 1982 + 1]
+            # print(pick_index)
+            gs = global_gs
+            spatial_trend_dict = {}
+            spatial_trend_p_dict = {}
+            for pix in tqdm(temperature_spatial_dict):
+                r,c = pix
+                if r > 180:
+                    continue
+                vals = temperature_spatial_dict[pix]
+                vals = T.mask_999999_arr(vals,warning=False)
+                if T.is_all_nan(vals):
+                    continue
+                vals_gs = T.monthly_vals_to_annual_val(vals,gs)
+                vals_gs_pick = vals_gs[pick_index[0]:pick_index[1]]
+                try:
+                    a,b,r,p = T.nan_line_fit(list(range(len(vals_gs_pick))),vals_gs_pick)
+                    spatial_trend_dict[pix] = a
+                    spatial_trend_p_dict[pix] = p
+                except:
+                    continue
+            outf_trend = join(outdir,'spatial_trend_{}-{}.tif'.format(period[0],period[1]))
+            outf_trend_p = join(outdir,'spatial_trend_p_{}-{}.tif'.format(period[0],period[1]))
+            DIC_and_TIF().pix_dic_to_tif(spatial_trend_dict,outf_trend)
+            DIC_and_TIF().pix_dic_to_tif(spatial_trend_p_dict,outf_trend_p)
+
+    def plot_precipitation_trend_two_periods(self):
+        fdir = join(self.this_class_tif,'spatial_trend_two_periods')
+        outdir = join(self.this_class_png,'spatial_trend_two_periods')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+
+        first_period = [1982, 1999]
+        second_period = [2000, 2015]
+        period_list = [first_period, second_period]
+        for period in period_list:
+            suffix = '{}-{}'.format(period[0],period[1])
+            outf = join(outdir,f'spatial_trend_{suffix}.png')
+            fpath = join(fdir,f'spatial_trend_{suffix}.tif')
+            fpath_p = join(fdir,f'spatial_trend_p_{suffix}.tif')
+            plt.figure(figsize=(5, 5))
+            m, ret1 = Plot().plot_ortho(fpath, vmin=-1, vmax=1, cmap='RdBu')
+            Plot().plot_ortho_significance_scatter(m,fpath_p,temp_root,s=5)
+            m.colorbar(ret1, location='bottom', pad='5%')
+            # plt.show()
+            plt.savefig(outf, dpi=600)
+            plt.close()
+
+
+
 
 class Resistance_Resilience:
 
@@ -2008,6 +2229,8 @@ def main():
     # Max_Scale_and_Lag_correlation_SPI().run()
     # Pick_Drought_Events().run()
     Drought_events_spatial_temporal_SPI12().run()
+    # Temperature_spatial_temporal_analysis().run()
+    # Precipitation_spatial_temporal_analysis().run()
     # Resistance_Resilience().run()
 
     # gen_world_grid_shp()
