@@ -7,7 +7,7 @@ result_root_this_script = join(results_root, 'Chapter5/statistic')
 
 class Dataframe_func:
 
-    def __init__(self,df):
+    def __init__(self,df,is_clean_df=True):
         print('add lon lat')
         df = self.add_lon_lat(df)
         print('add landcover')
@@ -26,8 +26,8 @@ class Dataframe_func:
         # df = self.add_ELI_significance(df)
         print('add koppen')
         df = self.add_koppen(df)
-
-        df = self.clean_df(df)
+        if is_clean_df == True:
+            df = self.clean_df(df)
         self.df = df
 
     def clean_df(self,df):

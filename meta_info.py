@@ -16,8 +16,8 @@ global_ELI_class_color_dict = {
     'Water-Limited': 'red',
 }
 global_AI_class = ['Humid', 'Arid']
-land_tif = join(this_root,'conf/land.tif')
-land_tif_reproj = join(this_root,'conf/land_reproj.tif')
+global_land_tif = join(this_root,'conf/land.tif')
+global_land_tif_reproj = join(this_root,'conf/land_reproj.tif')
 global_year_range = '1982-2015'
 global_start_year,global_end_year = global_year_range.split('-')
 global_start_year = int(global_start_year)

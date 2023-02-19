@@ -1259,8 +1259,13 @@ class Drought_events_spatial_temporal_SPI12:
         # self.add_variables()
         # self.tif_drought_number()
         # self.plot_spatial_drought_number()
-        self.drought_number_time_series()
+        # self.drought_affected_area_time_series()
+        self.drought_affected_area_time_series_bar()
+        # self.drought_affected_area_time_series_ELI()
+        # self.__gen_land_total_area_in_km2()
+        # self.__gen_land_water_energy_limited_area_in_km2()
         pass
+
 
 
     def gen_df(self):
@@ -1342,30 +1347,213 @@ class Drought_events_spatial_temporal_SPI12:
             plt.savefig(outf,dpi=600)
             plt.close()
 
-    def drought_number_time_series(self):
+    def drought_affected_area_time_series(self):
+        from Chapter5 import statistic
+        land_total_area_in_km2 = 50542483.19037567 # vegetated land, above 30 N
         dff = join(self.this_class_arr, 'dataframe/drought_events.df')
         df = T.load_df(dff)
-        # outdir = join(self.this_class_tif, 'drought_number_time_series')
-        # T.mk_dir(outdir, force=True)
-        # T.open_path_and_file(outdir)
+        pixel_area = DIC_and_TIF().calculate_pixel_area()
+        df = T.add_spatial_dic_to_df(df,pixel_area,'area_m2')
+        df['area_km2'] = df['area_m2'] / 1000 / 1000
+        df = statistic.Dataframe_func(df).df
+        outdir = join(self.this_class_png, 'drought_affected_area_time_series')
+        T.mk_dir(outdir, force=True)
+        T.open_path_and_file(outdir)
+        drought_type_list = global_drought_type_list
 
         year_list = list(range(global_start_year,global_end_year+1))
-        df_group_dict = T.df_groupby(df,'drought_year')
-        for year in year_list:
-            df_i = df_group_dict[year]
-            print(df_i)
-            exit()
+        plt.figure(figsize=(10, 5))
+        flag = 1
+        for drt in drought_type_list:
+            df_drt = df[df['drought_type'] == drt]
+            df_drt_group_dict = T.df_groupby(df_drt,'drought_year')
+            area_ratio_list = []
+            for year in year_list:
+                df_i = df_drt_group_dict[year]
+                area_sum = df_i['area_km2'].sum()
+                ratio = area_sum / land_total_area_in_km2 * 100
+                area_ratio_list.append(ratio)
+            a,b,r,p = T.nan_line_fit(year_list,area_ratio_list)
+            function = 'y = %.2f x + %.2f'%(a,b) + f', r = {r:.2f}, p = {p:.2f}'
+            plt.plot(year_list,area_ratio_list)
+            plt.xlabel('year')
+            plt.ylabel('area ratio (%)')
+            plt.text(1999, 0.5*flag, function)
+            flag += 2
+            plt.title(drt)
+        outf = join(outdir,'drought_affected_area_time_series.pdf')
+        plt.savefig(outf)
+        plt.close()
 
-
-
-        pass
-
-
-    def drought_affected_area_time_series(self):
+    def drought_affected_area_time_series_bar(self):
+        from Chapter5 import statistic
+        land_total_area_in_km2 = 50542483.19037567 # vegetated land, above 30 N
         dff = join(self.this_class_arr, 'dataframe/drought_events.df')
         df = T.load_df(dff)
+        pixel_area = DIC_and_TIF().calculate_pixel_area()
+        df = T.add_spatial_dic_to_df(df,pixel_area,'area_m2')
+        df['area_km2'] = df['area_m2'] / 1000 / 1000
+        df = statistic.Dataframe_func(df).df
+        outdir = join(self.this_class_png, 'drought_affected_area_time_series_bar')
+        T.mk_dir(outdir, force=True)
+        # T.open_path_and_file(outdir)
+        drought_type_list = global_drought_type_list
+
+        year_list = list(range(global_start_year,global_end_year+1))
+        plt.figure(figsize=(10, 5))
+
+        # plot total bar
+        df_drt_group_dict = T.df_groupby(df, 'drought_year')
+        area_ratio_list = []
+        for year in year_list:
+            df_i = df_drt_group_dict[year]
+            area_sum = df_i['area_km2'].sum()
+            ratio = area_sum / land_total_area_in_km2 * 100
+            area_ratio_list.append(ratio)
+        a, b, r, p = T.nan_line_fit(year_list, area_ratio_list)
+        function = 'all: y = %.2f x + %.2f' % (a, b) + f', r = {r:.2f}, p = {p:.2f}'
+        # plt.plot(year_list, area_ratio_list)
+        KDE_plot().plot_fit_line(a, b, r, p, year_list, line_color='k', lw=1)
+        plt.bar(year_list, area_ratio_list, width=0.8, color='w', edgecolor='k')
+        plt.xlabel('year')
+        plt.ylabel('area ratio (%)')
+        plt.text(1982, 16, function)
+        # plt.show()
+        color_dict = global_drought_type_color_dict
+        algin_dict = {'normal-drought': 'center', 'hot-drought': 'edge'}
+        flag = 1
+        for drt in drought_type_list:
+            df_drt = df[df['drought_type'] == drt]
+            df_drt_group_dict = T.df_groupby(df_drt,'drought_year')
+            area_ratio_list = []
+            for year in year_list:
+                df_i = df_drt_group_dict[year]
+                area_sum = df_i['area_km2'].sum()
+                ratio = area_sum / land_total_area_in_km2 * 100
+                area_ratio_list.append(ratio)
+            a,b,r,p = T.nan_line_fit(year_list,area_ratio_list)
+            function = '%s: y = %.2f x + %.2f'%(drt,a,b) + f', r = {r:.2f}, p = {p:.2f}'
+            plt.bar(year_list,area_ratio_list,width=0.3,color=color_dict[drt],edgecolor='none',align=algin_dict[drt])
+            KDE_plot().plot_fit_line(a, b, r, p, year_list,line_color=color_dict[drt],lw=1)
+            plt.xlabel('year')
+            plt.ylabel('area ratio (%)')
+            plt.text(1982, 16-flag, function)
+            flag += 1
+            plt.title(drt)
+        # plt.show()
+        outf = join(outdir,'drought_affected_area_time_series.pdf')
+        plt.savefig(outf)
+        plt.close()
+
+
+
+    def drought_affected_area_time_series_ELI(self):
+        '''
+        Energy-Limited 40537578.736916244
+        Water-Limited 8851145.201112421
+        :return:
+        '''
+        from Chapter5 import statistic
+        outdir = join(self.this_class_png, 'drought_affected_area_time_series_ELI')
+        T.mk_dir(outdir, force=True)
+        T.open_path_and_file(outdir)
+        water_limited_total_area_in_km2 = 8851145.201112421 # vegetated land, above 30 N
+        energy_limited_total_area_in_km2 = 40537578.736916244 # vegetated land, above 30 N
+        area_dict = {'Water-Limited':water_limited_total_area_in_km2,
+                     'Energy-Limited':energy_limited_total_area_in_km2}
+        dff = join(self.this_class_arr, 'dataframe/drought_events.df')
+        df = T.load_df(dff)
+        pixel_area = DIC_and_TIF().calculate_pixel_area()
+        df = T.add_spatial_dic_to_df(df,pixel_area,'area_m2')
+        df['area_km2'] = df['area_m2'] / 1000 / 1000
+        df = statistic.Dataframe_func(df).df
         T.print_head_n(df)
-        pass
+        ELI_class_list = global_ELI_class_list
+        for ELI in ELI_class_list:
+            df_ELI = df[df['ELI_class'] == ELI]
+            drought_type_list = global_drought_type_list
+            year_list = list(range(global_start_year,global_end_year+1))
+            plt.figure(figsize=(10, 5))
+            flag = 1
+            for drt in drought_type_list:
+                df_drt = df_ELI[df_ELI['drought_type'] == drt]
+                df_drt_group_dict = T.df_groupby(df_drt,'drought_year')
+                area_ratio_list = []
+                for year in year_list:
+                    df_i = df_drt_group_dict[year]
+                    area_sum = df_i['area_km2'].sum()
+                    ratio = area_sum / area_dict[ELI] * 100
+                    area_ratio_list.append(ratio)
+                a,b,r,p = T.nan_line_fit(year_list,area_ratio_list)
+                function = 'y = %.2f x + %.2f'%(a,b) + f', r = {r:.2f}, p = {p:.2f}'
+                plt.plot(year_list,area_ratio_list)
+                plt.xlabel('year')
+                plt.ylabel('area ratio (%)')
+                plt.text(1999, 0.5*flag, function)
+                flag += 2
+                plt.title(drt)
+            outf = join(outdir,f'{ELI}.pdf')
+            plt.savefig(outf)
+            plt.close()
+
+
+    def __gen_land_total_area_in_km2(self):
+        '''
+        50542483.19037567 km2
+        :return:
+        '''
+        from Chapter5 import statistic
+        land_tif = global_land_tif
+        spatial_dict = DIC_and_TIF().spatial_tif_to_dic(land_tif)
+        area_dict = DIC_and_TIF().calculate_pixel_area()
+        df = T.spatial_dics_to_df({
+            'is_land':spatial_dict,}
+        )
+        df = T.add_spatial_dic_to_df(df,area_dict,'area_m2')
+        df['area_km2'] = df['area_m2'] / 1000 / 1000
+        # df = df[df['lat']>=30]
+        df = statistic.Dataframe_func(df,is_clean_df=True).df
+        area_spatial_dict = T.df_to_spatial_dic(df,'area_km2')
+        arr = DIC_and_TIF().pix_dic_to_spatial_arr(area_spatial_dict)
+        plt.imshow(arr,cmap='jet')
+
+        area_km2_sum = df['area_km2'].sum()
+        T.print_head_n(df)
+        print(area_km2_sum)
+        plt.colorbar()
+        plt.show()
+
+    def __gen_land_water_energy_limited_area_in_km2(self):
+        '''
+        Energy-Limited 40537578.736916244
+        Water-Limited 8851145.201112421
+        :return:
+        '''
+        from Chapter5 import statistic
+        land_tif = global_land_tif
+        ELI_class = global_ELI_class_list
+        spatial_dict = DIC_and_TIF().spatial_tif_to_dic(land_tif)
+        area_dict = DIC_and_TIF().calculate_pixel_area()
+        df = T.spatial_dics_to_df({
+            'is_land':spatial_dict,}
+        )
+        df = T.add_spatial_dic_to_df(df,area_dict,'area_m2')
+        df['area_km2'] = df['area_m2'] / 1000 / 1000
+        # df = df[df['lat']>=30]
+        df = statistic.Dataframe_func(df,is_clean_df=True).df
+
+        for ELI in ELI_class:
+            df_ELI = df[df['ELI_class'] == ELI]
+            area_spatial_dict = T.df_to_spatial_dic(df_ELI,'area_km2')
+            arr = DIC_and_TIF().pix_dic_to_spatial_arr(area_spatial_dict)
+            plt.figure()
+            plt.imshow(arr,cmap='jet')
+
+            area_km2_sum = df_ELI['area_km2'].sum()
+            # T.print_head_n(df_ELI)
+            print(ELI,area_km2_sum)
+            plt.colorbar()
+        plt.show()
 
 
 class Resistance_Resilience:
