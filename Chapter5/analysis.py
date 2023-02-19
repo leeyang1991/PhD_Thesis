@@ -1258,9 +1258,13 @@ class Drought_events_spatial_temporal_SPI12:
         # self.gen_df()
         # self.add_variables()
         # self.tif_drought_number()
+        # self.tif_drought_number_two_period()
+        # self.tif_compare_two_periods()
         # self.plot_spatial_drought_number()
+        # self.plot_spatial_drought_number_two_period()
+        self.plot_spatial_compare_two_period()
         # self.drought_affected_area_time_series()
-        self.drought_affected_area_time_series_bar()
+        # self.drought_affected_area_time_series_bar()
         # self.drought_affected_area_time_series_ELI()
         # self.__gen_land_total_area_in_km2()
         # self.__gen_land_water_energy_limited_area_in_km2()
@@ -1331,6 +1335,72 @@ class Drought_events_spatial_temporal_SPI12:
             outf = join(outdir,drt+'.tif')
             DIC_and_TIF().arr_to_tif(arr,outf)
 
+
+    def tif_drought_number_two_period(self):
+        dff = join(self.this_class_arr,'dataframe/drought_events.df')
+        df = T.load_df(dff)
+        outdir = join(self.this_class_tif,'drought_number_two_period')
+        T.mk_dir(outdir,force=True)
+        T.open_path_and_file(outdir)
+        T.print_head_n(df)
+        first_period = [1982,1999]
+        second_period = [2000,2015]
+        drought_type_list = global_drought_type_list
+
+        period_list = [first_period,second_period]
+        for period in period_list:
+            df_period = df[(df['drought_year']>=period[0])&(df['drought_year']<=period[1])]
+            for drt in drought_type_list:
+                df_drt = df_period[df_period['drought_type'] == drt]
+                df_group_dict = T.df_groupby(df_drt,'pix')
+                spatial_dict = {}
+                for pix in df_group_dict:
+                    df_i = df_group_dict[pix]
+                    drought_number = len(df_i)
+                    if drought_number == 0:
+                        continue
+                    spatial_dict[pix] = drought_number
+                arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
+                outf = join(outdir,f'{drt}_{period[0]}-{period[1]}.tif')
+                DIC_and_TIF().arr_to_tif(arr,outf)
+
+    def tif_compare_two_periods(self):
+        fdir = join(self.this_class_tif,'drought_number_two_period')
+        outdir = join(self.this_class_tif,'drought_number_two_period_compare')
+        T.mk_dir(outdir,force=True)
+        T.open_path_and_file(outdir)
+        # drought_type_list = global_drought_type_list
+        # first_period = [1982,1999]
+        # second_period = [2000,2015]
+        first_hot_drought_f = join(fdir,'hot-drought_1982-1999.tif')
+        second_hot_drought_f = join(fdir,'hot-drought_2000-2015.tif')
+        first_normal_drought_f = join(fdir,'normal-drought_1982-1999.tif')
+        second_normal_drought_f = join(fdir,'normal-drought_2000-2015.tif')
+
+        first_hot_drought_arr = ToRaster().raster2array(first_hot_drought_f)[0]
+        second_hot_drought_arr = ToRaster().raster2array(second_hot_drought_f)[0]
+        first_normal_drought_arr = ToRaster().raster2array(first_normal_drought_f)[0]
+        second_normal_drought_arr = ToRaster().raster2array(second_normal_drought_f)[0]
+
+        first_hot_drought_arr[first_hot_drought_arr<-9999] = 0
+        second_hot_drought_arr[second_hot_drought_arr<-9999] = 0
+        first_normal_drought_arr[first_normal_drought_arr<-9999] = 0
+        second_normal_drought_arr[second_normal_drought_arr<-9999] = 0
+
+
+        hot_drought_compare_arr = second_hot_drought_arr - first_hot_drought_arr
+        normal_drought_compare_arr = second_normal_drought_arr - first_normal_drought_arr
+
+        hot_drought_compare_arr[hot_drought_compare_arr==0] = np.nan
+        normal_drought_compare_arr[normal_drought_compare_arr==0] = np.nan
+
+        outf_hot = join(outdir,'hot-drought_compare.tif')
+        outf_normal = join(outdir,'normal-drought_compare.tif')
+
+        DIC_and_TIF().arr_to_tif(hot_drought_compare_arr,outf_hot)
+        DIC_and_TIF().arr_to_tif(normal_drought_compare_arr,outf_normal)
+
+
     def plot_spatial_drought_number(self):
         fdir = join(self.this_class_tif,'drought_number')
         outdir = join(self.this_class_png,'spatial_drought_number')
@@ -1343,6 +1413,39 @@ class Drought_events_spatial_temporal_SPI12:
             plt.figure(figsize=(5, 5))
             m,ret1 = Plot().plot_ortho(fpath,vmin=1,vmax=4)
             m.colorbar(ret1,location='bottom',pad='5%')
+            outf = join(outdir,f.replace('.tif','.png'))
+            plt.savefig(outf,dpi=600)
+            plt.close()
+
+    def plot_spatial_drought_number_two_period(self):
+        fdir = join(self.this_class_tif,'drought_number_two_period')
+        outdir = join(self.this_class_png,'spatial_drought_number_two_period')
+        T.mk_dir(outdir,force=True)
+        T.open_path_and_file(outdir)
+        for f in T.listdir(fdir):
+            if not f.endswith('.tif'):
+                continue
+            fpath = join(fdir,f)
+            plt.figure(figsize=(5, 5))
+            m,ret1 = Plot().plot_ortho(fpath,vmin=1,vmax=4)
+            m.colorbar(ret1,location='bottom',pad='5%')
+            outf = join(outdir,f.replace('.tif','.png'))
+            plt.savefig(outf,dpi=600)
+            plt.close()
+
+    def plot_spatial_compare_two_period(self):
+        fdir = join(self.this_class_tif,'drought_number_two_period_compare')
+        outdir = join(self.this_class_png,'spatial_drought_number_two_period_compare')
+        T.mk_dir(outdir,force=True)
+        T.open_path_and_file(outdir)
+        for f in T.listdir(fdir):
+            if not f.endswith('.tif'):
+                continue
+            fpath = join(fdir,f)
+            plt.figure(figsize=(5, 5))
+            m,ret1 = Plot().plot_ortho(fpath,vmin=-4,vmax=4)
+            m.colorbar(ret1,location='bottom',pad='5%')
+            # plt.show()
             outf = join(outdir,f.replace('.tif','.png'))
             plt.savefig(outf,dpi=600)
             plt.close()
