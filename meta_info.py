@@ -22,6 +22,7 @@ global_year_range = '1982-2015'
 global_start_year,global_end_year = global_year_range.split('-')
 global_start_year = int(global_start_year)
 global_end_year = int(global_end_year)
+global_year_range_list = list(range(global_start_year,global_end_year+1))
 # data_path_dict = Meta_information().path(global_year_range)
 global_gs = list(range(5,11))
 
@@ -130,12 +131,20 @@ class Meta_information:
                 'path': join(data_root, f'CRU_tmp/per_pix/{year_range}'),
                 'path_type': 'dir',
             },
+            'Temperature-anomaly': {
+                'path': join(data_root, f'CRU_tmp/anomaly/{year_range}'),
+                'path_type': 'dir',
+            },
             'Precipitation-detrend': {
                 'path': join(data_root, f'CRU_precip/detrend/{year_range}/precip.npy'),
                 'path_type': 'file',
             },
             'Precipitation-origin': {
                 'path': join(data_root, f'CRU_precip/per_pix/{year_range}'),
+                'path_type': 'dir',
+            },
+            'Precipitation-anomaly': {
+                'path': join(data_root, f'CRU_precip/anomaly/{year_range}'),
                 'path_type': 'dir',
             },
             'Radiation': {

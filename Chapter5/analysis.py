@@ -1262,10 +1262,12 @@ class Drought_events_spatial_temporal_SPI12:
         # self.tif_compare_two_periods()
         # self.plot_spatial_drought_number()
         # self.plot_spatial_drought_number_two_period()
-        self.plot_spatial_compare_two_period()
+        # self.plot_spatial_compare_two_period()
         # self.drought_affected_area_time_series()
         # self.drought_affected_area_time_series_bar()
         # self.drought_affected_area_time_series_ELI()
+        # self.P_and_T_under_drought_time_series()
+        self.plot_p_t_during_drought()
         # self.__gen_land_total_area_in_km2()
         # self.__gen_land_water_energy_limited_area_in_km2()
         pass
@@ -1598,6 +1600,97 @@ class Drought_events_spatial_temporal_SPI12:
             outf = join(outdir,f'{ELI}.pdf')
             plt.savefig(outf)
             plt.close()
+
+    def P_and_T_under_drought_time_series(self):
+        from Chapter5 import statistic
+        outdir = join(self.this_class_arr,'P_and_T_under_drought_time_series')
+        T.mk_dir(outdir,force=True)
+        T.open_path_and_file(outdir)
+        outf = join(outdir,'dataframe.df')
+        dff = join(self.this_class_arr, 'dataframe/drought_events.df')
+        df = T.load_df(dff)
+        gs = global_gs
+        df = statistic.Dataframe_func(df,is_clean_df=False).df
+        product_list = ['Precipitation-anomaly','Temperature-anomaly']
+        for product in product_list:
+            spatial_dict = Meta_information().load_data(product)
+            spatial_anomaly_dict = {}
+            for pix in tqdm(spatial_dict,desc='monthly to annual'):
+                r,c = pix
+                if r > 180:
+                    continue
+                vals = spatial_dict[pix]
+                vals = T.mask_999999_arr(vals,warning=False)
+                if T.is_all_nan(vals):
+                    continue
+                vals_gs = T.monthly_vals_to_annual_val(vals,gs)
+                vals_gs_dict = dict(zip(global_year_range_list,vals_gs))
+                spatial_anomaly_dict[pix] = vals_gs_dict
+            vals_list = []
+            for i,row in tqdm(df.iterrows(),total=len(df)):
+                year = row['drought_year']
+                pix = row['pix']
+                if pix not in spatial_anomaly_dict:
+                    vals_list.append(np.nan)
+                    continue
+                vals_dict = spatial_anomaly_dict[pix]
+                val = vals_dict[year]
+                vals_list.append(val)
+            df[product] = vals_list
+        T.save_df(df,outf)
+        T.df_to_excel(df,outf)
+
+
+    def plot_p_t_during_drought(self):
+        outdir = join(self.this_class_png,'P_and_T_under_drought_time_series')
+        T.mk_dir(outdir,force=True)
+        T.open_path_and_file(outdir)
+        dff = join(self.this_class_arr,'P_and_T_under_drought_time_series/dataframe.df')
+        df = T.load_df(dff)
+        product_list = ['Precipitation-anomaly', 'Temperature-anomaly']
+        drought_type_list = global_drought_type_list
+        for product in product_list:
+            plt.figure(figsize=(10, 5))
+            outf = join(outdir,f'{product}.pdf')
+            flag = 1
+            for drt in drought_type_list:
+                df_drt = df[df['drought_type'] == drt]
+                year_list = global_year_range_list
+                df_group = T.df_groupby(df_drt,'drought_year')
+                x = []
+                y = []
+                err = []
+                for year in year_list:
+                    df_i = df_group[year]
+                    vals = df_i[product].tolist()
+                    vals_mean = np.nanmean(vals)
+                    vals_std = np.nanstd(vals)
+                    x.append(year)
+                    y.append(vals_mean)
+                    err.append(vals_std)
+                y = SMOOTH().smooth_convolve(y,window_len=5)
+                err = SMOOTH().smooth_convolve(err,window_len=5)
+                err = err / 2
+                Plot().plot_line_with_error_bar(x,y,err,c=global_drought_type_color_dict[drt])
+                plt.plot(x,y,label=drt)
+                plt.scatter(x,y)
+                a,b,r,p = T.nan_line_fit(x,y)
+                function = 'y = %.4f x + %.2f'%(a,b) + f', r = {r:.2f}, p = {p:.2f} {drt}'
+                if product == 'Temperature-anomaly':
+                    plt.text(1999, 0.2*flag, function)
+                elif product == 'Precipitation-anomaly':
+                    plt.text(1999, -0.2*flag, function)
+                flag += 2
+                plt.xlabel('year')
+                plt.ylabel(product)
+            # plt.show()
+            plt.savefig(outf)
+            plt.close()
+
+
+
+
+        pass
 
 
     def __gen_land_total_area_in_km2(self):

@@ -191,11 +191,12 @@ class Hot_Normal_Rs_Rt:
 
     def run(self):
         # self.rs_rt_tif()
+        self.plot_rs_rt_spatial()
         #
         # self.rs_rt_bar()
         # self.rs_rt_hist()
 
-        self.rs_rt_bar_water_energy_limited()
+        # self.rs_rt_bar_water_energy_limited()
         # self.rs_rt_bar_Humid_Arid()
         # self.rs_rt_bar_PFTs()
         # self.rs_rt_pfts_koppen_scatter()
@@ -228,6 +229,33 @@ class Hot_Normal_Rs_Rt:
                     mean = np.nanmean(vals)
                     spatial_dict[pix] = mean
                 DIC_and_TIF().pix_dic_to_tif(spatial_dict, outf)
+
+    def plot_rs_rt_spatial(self):
+        fdir = join(self.this_class_tif, 'rs_rt_tif')
+        outdir = join(self.this_class_png,'rs_rt_spatial')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+        for drt in self.drought_type_list:
+            fdir_i = join(fdir, drt)
+            outdir_i = join(outdir, drt)
+            T.mk_dir(outdir_i)
+
+            for f in T.listdir(fdir_i):
+                if not f.endswith('.tif'):
+                    continue
+                fpath = join(fdir_i, f)
+                plt.figure(figsize=(5, 5))
+                m,ret = Plot().plot_ortho(fpath, vmin=0.95,vmax=1.05,cmap=global_cmap)
+                m.colorbar(ret, location='bottom', pad="5%")
+                plt.title(f.replace('.tif',''))
+                outf = join(outdir_i, f.replace('.tif', '.png'))
+                # plt.show()
+                plt.savefig(outf,dpi=600)
+                plt.close()
+
+
+        pass
+
 
     def rs_rt_bar(self):
         outdir = join(self.this_class_png, 'rs_rt_bar')
@@ -2446,13 +2474,13 @@ class Over_shoot_drought:
 
 def main():
     # Dataframe().run()
-    # Hot_Normal_Rs_Rt().run()
+    Hot_Normal_Rs_Rt().run()
     # Water_Energy_ltd().run()
     # ELI_AI_gradient().run()
     # Rt_Rs_change_overtime().run()
     # Drought_events_process().run()
     # Rt_Rs_relationship().run()
-    Over_shoot_drought().run()
+    # Over_shoot_drought().run()
     pass
 
 
