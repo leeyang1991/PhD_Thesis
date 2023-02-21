@@ -1,5 +1,10 @@
 # coding=utf-8
 from __init__ import *
+
+plt.rcParams['font.sans-serif'] = ['Arial']
+plt.rcParams['font.size'] = 8
+centimeter_factor = 1 / 2.54
+
 this_root = '/Volumes/NVME2T/PhD_Thesis_project/'
 data_root = this_root + 'data/'
 results_root = this_root + 'results/'
