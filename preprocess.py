@@ -1,4 +1,6 @@
 # coding=utf-8
+import matplotlib.pyplot as plt
+
 from __init__ import *
 import xarray as xr
 import climate_indices
@@ -1685,6 +1687,123 @@ class GOME2_SIF:
             T.save_npy(picked_vals_dic,outf)
 
 
+class MODIS_LAI_Yuan:
+
+    def __init__(self):
+        self.data_dir = '/Users/liyang/Downloads/lai_monthly_yuanhua/'
+        pass
+
+    def run(self):
+        # self.nc_to_tif()
+        # self.per_pix()
+        self.trend()
+        pass
+
+    def nc_to_tif(self):
+        fdir = join(self.data_dir,'nc')
+        outdir = join(self.data_dir,'tif')
+        T.mk_dir(outdir,force=True)
+        for f in tqdm(T.listdir(fdir)):
+            year = f.split('.')[1].split('_')[1]
+            fpath = join(fdir,f)
+            ncin = Dataset(fpath, 'r')
+            # print(ncin['time'])
+            arrs = ncin['lai'][:]
+            t = 1
+            for arr in arrs:
+                arr = np.array(arr,dtype=float)
+                arr[arr<=0] = np.nan
+                outf = join(outdir,f'{year}{t:02d}.tif')
+                DIC_and_TIF().arr_to_tif(arr,outf)
+                t += 1
+        pass
+
+
+    def per_pix(self):
+        fdir = join(self.data_dir,'tif')
+        outdir = join(self.data_dir,'per_pix')
+        T.mk_dir(outdir,force=True)
+        Pre_Process().data_transform(fdir,outdir)
+
+    def trend(self):
+        fdir = join(self.data_dir,'per_pix')
+        outdir = join(self.data_dir,'trend')
+        T.mk_dir(outdir,force=True)
+        spatial_dict = T.load_npy_dir(fdir)
+        mon_list = list(range(5,11))
+        for m in tqdm(mon_list):
+            trend_dict = {}
+            gs = [m]
+            for pix in tqdm(spatial_dict):
+                vals = spatial_dict[pix]
+                vals = T.mask_999999_arr(vals,warning=False)
+                if T.is_all_nan(vals):
+                    continue
+                vals_gs = T.monthly_vals_to_annual_val(vals,gs)
+                try:
+                    a,b,r,p = T.nan_line_fit(np.arange(len(vals_gs)),vals_gs)
+                    trend_dict[pix] = a
+                except:
+                    continue
+            outf = join(outdir,f'{m}_trend.tif')
+            DIC_and_TIF().pix_dic_to_tif(trend_dict,outf)
+
+
+class MODIS_LAI_Chen:
+
+    def __init__(self):
+        self.data_dir = '/Volumes/NVME2T/greening_project_redo/data/MODIS_LAI/'
+        pass
+
+    def run(self):
+        # self.monthly_compose()
+        # self.perpix()
+        self.trend()
+        pass
+
+    def monthly_compose(self):
+        fdir = join(self.data_dir,'tif_05')
+        outdir = join(self.data_dir,'monthly_compose')
+        T.mk_dir(outdir,force=True)
+        Pre_Process().monthly_compose(fdir,outdir,date_fmt='doy')
+
+    def perpix(self):
+        fdir = join(self.data_dir,'monthly_compose')
+        outdir = join(self.data_dir,'per_pix_monthly')
+        T.mk_dir(outdir,force=True)
+        Pre_Process().data_transform(fdir,outdir)
+        pass
+
+    def trend(self):
+        fdir = join(self.data_dir,'per_pix_monthly')
+        outdir = join(self.data_dir,'trend')
+        T.mk_dir(outdir,force=True)
+        spatial_dict = T.load_npy_dir(fdir)
+        mon_list = list(range(5,11))
+        for m in tqdm(mon_list):
+            trend_dict = {}
+            gs = [m]
+            for pix in tqdm(spatial_dict):
+                r,c = pix
+                if r > 180:
+                    continue
+                vals = spatial_dict[pix]
+                vals = T.mask_999999_arr(vals,warning=False)
+                if T.is_all_nan(vals):
+                    continue
+                # print(len(vals))
+                # plt.plot(vals)
+                # plt.show()
+                vals_gs = T.monthly_vals_to_annual_val(vals,gs)
+                try:
+                    a,b,r,p = T.nan_line_fit(np.arange(len(vals_gs)),vals_gs)
+                    trend_dict[pix] = a
+                except:
+                    continue
+            outf = join(outdir,f'{m}_trend_chen.tif')
+            DIC_and_TIF().pix_dic_to_tif(trend_dict,outf)
+        pass
+
 def main():
     # GIMMS_NDVI().run()
     # SPEI().run()
@@ -1706,7 +1825,9 @@ def main():
     # GLEAM_ET().run()
     # GLEAM_SMRoot().run()
     # ERA_2m_T().run()
-    GOME2_SIF().run()
+    # GOME2_SIF().run()
+    # MODIS_LAI_Yuan().run()
+    MODIS_LAI_Chen().run()
 
     pass
 
