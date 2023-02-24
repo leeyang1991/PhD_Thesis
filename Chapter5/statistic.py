@@ -191,7 +191,7 @@ class Hot_Normal_Rs_Rt:
 
     def run(self):
         # self.rs_rt_tif()
-        self.plot_rs_rt_spatial()
+        # self.plot_rs_rt_spatial()
         #
         # self.rs_rt_bar()
         # self.rs_rt_hist()
@@ -201,6 +201,7 @@ class Hot_Normal_Rs_Rt:
         # self.rs_rt_bar_PFTs()
         # self.rs_rt_pfts_koppen_scatter()
         # self.rs_rt_area_ratio_bar()
+        self.rs_rt_area_ratio_bar_two_regions()
         # self.rs_rt_area_ratio_ELI_matrix()
         # self.rs_rt_pfts_koppen_area_ratio_scatter()
         pass
@@ -283,9 +284,9 @@ class Hot_Normal_Rs_Rt:
         plt.xticks(rotation=90)
         plt.ylim(0.97, 1.01)
         plt.tight_layout()
-        # plt.show()
-        outf = join(outdir, 'rs_rt_bar.pdf')
-        plt.savefig(outf, dpi=300)
+        plt.show()
+        # outf = join(outdir, 'rs_rt_bar.pdf')
+        # plt.savefig(outf, dpi=300)
 
     def rs_rt_bar_water_energy_limited(self):
         outdir = join(self.this_class_png, 'rs_rt_bar_water_energy_limited')
@@ -558,12 +559,95 @@ class Hot_Normal_Rs_Rt:
         data['ratio'] = ratio_list
 
         # sns.pointplot(x='rs_col', y='ratio', hue='drought_type', data=data,kind='bar')
+        plt.figure(figsize=(8*centimeter_factor, 6*centimeter_factor))
         sns.barplot(x='rs_col', y='ratio', hue='drought_type', data=data)
         # plt.show()
         # outf = join(outdir, 'rs_rt_area_ratio_bar.png')
         outf = join(outdir, 'rs_rt_area_ratio_bar.pdf')
         plt.savefig(outf, dpi=300)
         plt.close()
+
+    def rs_rt_area_ratio_bar_two_regions(self):
+        outdir = join(self.this_class_png, 'rs_rt_area_ratio_bar_two_regions')
+        T.mk_dir(outdir)
+        df = Load_dataframe().load_chapter5()
+        threshold = 0.05
+        rs_cols = get_rs_rt_cols()
+        drought_type_list = global_drought_type_list
+        ELI_class_list = global_ELI_class_list
+        data = pd.DataFrame()
+        drt_list = []
+        rs_col_list = []
+        ratio_list = []
+        ELI_List = []
+        for drt in drought_type_list:
+            df_drt = df[df['drought_type'] == drt]
+            for ELI in ELI_class_list:
+                df_eli = df_drt[df_drt['ELI_class'] == ELI]
+                for rs_col in rs_cols:
+                    df_eli_copy = df_eli.copy()
+                    df_eli_copy = df_eli_copy.dropna(subset=['ELI', rs_col], how='any')
+                    vals = df_eli_copy[rs_col]
+                    vals = np.array(vals)
+                    vals = vals[vals < (1 - threshold)]
+                    # vals = vals[vals > (1 + threshold)]
+                    ratio = len(vals) / len(df_eli) * 100
+                    drt_list.append(drt)
+                    ELI_List.append(ELI)
+                    rs_col_list.append(rs_col)
+                    ratio_list.append(ratio)
+        data['drought_type'] = drt_list
+        data['ELI'] = ELI_List
+        data['rs_col'] = rs_col_list
+        data['ratio'] = ratio_list
+        T.print_head_n(data)
+
+        # sns.pointplot(x='rs_col', y='ratio', hue='drought_type', data=data,kind='bar')
+        plt.figure(figsize=(8*centimeter_factor, 6*centimeter_factor))
+        # plot all
+        x = []
+        y = []
+        flag = 0
+        for col in rs_cols:
+            for drt in drought_type_list:
+                data_drt = data[data['drought_type'] == drt]
+                # df_col = data[data['rs_col'] == col]
+                selected = data_drt[data_drt['rs_col']==col]
+                ratio = selected['ratio'].values
+                ratio = ratio.sum()
+                # x.append(f'{drt}-{col}')
+                x.append(flag)
+                y.append(ratio)
+                flag += 1
+            flag += 0.5
+        plt.bar(x,y,color='none',edgecolor='black')
+
+        x = []
+        y = []
+        label = []
+        flag = 0
+        for col in rs_cols:
+            for drt in drought_type_list:
+                data_drt = data[data['drought_type'] == drt]
+                for ELI in ELI_class_list:
+                    data_drt_eli = data_drt[data_drt['ELI'] == ELI]
+                    selected = data_drt_eli[data_drt_eli['rs_col'] == col]
+                    ratio = selected['ratio'].values
+                    ratio = ratio.sum()
+                    y.append(ratio)
+                    x.append(flag)
+                    label.append(f'{drt}-{ELI}-{col}')
+                    flag += 0.25
+                flag += 0.5
+            flag += 0.5
+        plt.bar(x,y,edgecolor='k',width=0.25,align='center')
+        # plt.xticks(x,label,rotation=45,ha='right')
+        plt.tight_layout()
+        # plt.show()
+        outf = join(outdir, 'rs_rt_area_ratio_bar_two_regions.pdf')
+        plt.savefig(outf)
+        T.open_path_and_file(outdir)
+
 
     def rs_rt_area_ratio_ELI_matrix(self):
         outdir = join(self.this_class_png, 'rs_rt_area_ratio_ELI_matrix')
