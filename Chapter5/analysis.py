@@ -1984,10 +1984,10 @@ class Resistance_Resilience:
 
     def run(self):
         # self.check_lag_and_scale()
-        # self.gen_dataframe()
+        self.gen_dataframe()
         df = self.__gen_df_init()
         # df = self.add_max_lag_and_scale(df)
-        df = self.add_max_r(df)
+        # df = self.add_max_r(df)
         # df = self.cal_rt(df)
         # df = self.cal_rs(df)
         # # self.rt_tif(df)
@@ -2250,6 +2250,238 @@ class Resistance_Resilience:
         T.df_to_excel(df, outf)
         return df
 
+class Net_effect:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('Net_effect', result_root_this_script, mode=2)
+        self.dff = join(self.this_class_arr, 'dataframe/dataframe.df')
+        pass
+
+    def run(self):
+        # self.gen_dataframe()
+        df = self.__gen_df_init()
+        # df = self.add_max_lag_and_scale(df)
+        # df = self.add_post_n_year_average(df)
+        # T.save_df(df, self.dff)
+        # T.df_to_excel(df, self.dff)
+
+        # self.tif_net_effect(df)
+        self.plot_net_effect()
+
+
+
+        pass
+
+    def add_post_n_year_average(self,df):
+        annual_vals_dict_all = self.__get_annual_vals_dict(method='array')
+
+        for relative_year in list(range(5)):
+        # for relative_year in [4]:
+            mean_val_list = []
+            for i,row in tqdm(df.iterrows(),total=len(df),desc=f'{relative_year}'):
+                pix = row['pix']
+                year = row['drought_year']
+                if not pix in annual_vals_dict_all:
+                    mean_val_list.append(np.nan)
+                    continue
+                # print(pix)
+                annual_vals_dict = annual_vals_dict_all[pix]
+                selected_years = list(range(year, year + relative_year+1))
+                selected_vals = []
+                for y in selected_years:
+                    if not y in annual_vals_dict:
+                        selected_vals = []
+                        break
+                    selected_vals.append(annual_vals_dict[y])
+                if len(selected_vals) == 0:
+                    mean_val_list.append(np.nan)
+                    continue
+                # print(len(selected_vals))
+                # print(selected_vals)
+                # mean_val = np.nansum(selected_vals)
+                mean_val = np.nanmean(selected_vals)
+                # print(mean_val)
+                # exit()
+                mean_val_list.append(mean_val)
+                # print(mean_val)
+            col_name = f'post_{relative_year}_year_net_change'
+            df[col_name] = mean_val_list
+        # exit()
+        return df
+
+    def tif_net_effect(self,df):
+        outdir = join(self.this_class_tif, 'net_effect')
+        T.mk_dir(outdir)
+        # T.print_head_n(df)
+        df = df.dropna(subset=['post_0_year_net_change'])
+        T.print_head_n(df)
+        for y in range(5):
+            col_name = f'post_{y}_year_net_change'
+            for drt in global_drought_type_list:
+                df_drt = df[df['drought_type'] == drt]
+                df_group_dict = T.df_groupby(df_drt,'pix')
+                spatial_dict = {}
+                for pix in tqdm(df_group_dict,desc=f'{drt} {col_name}'):
+                    df_pix = df_group_dict[pix]
+                    val_list = df_pix[col_name].tolist()
+                    if len(val_list) == 0:
+                        continue
+                    vals_mean = np.nanmean(val_list)
+                    spatial_dict[pix] = vals_mean
+                arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
+                outf = join(outdir, f'{drt}_{col_name}.tif')
+                DIC_and_TIF().arr_to_tif(arr, outf)
+
+    def plot_net_effect(self):
+        fdir = join(self.this_class_tif, 'net_effect')
+        outdir = join(self.this_class_png, 'net_effect')
+        T.mk_dir(outdir)
+        for f in T.listdir(fdir):
+            if not f.endswith('.tif'):
+                continue
+            fpath = join(fdir, f)
+            plt.figure(figsize=(8.8*centimeter_factor, 8.8*centimeter_factor))
+            m,ret = Plot().plot_ortho(fpath,vmin=-0.5,vmax=0.5,cmap=global_cmap)
+            m.colorbar(ret,location='bottom',pad='5%')
+            plt.title(f)
+            outf = join(outdir, f.replace('.tif', '.png'))
+            # plt.show()
+            plt.savefig(outf, dpi=600)
+            plt.close()
+
+
+        pass
+
+
+    def gen_dataframe(self):
+        drought_envents_df = self.__get_drought_events()
+        drought_envents_df_dict = T.df_to_dic(drought_envents_df, 'pix')
+        pix_list = []
+        drought_type_with_scale_list = []
+        drought_type_list = []
+        drought_year_list = []
+        for pix in tqdm(drought_envents_df_dict):
+            dict_i = drought_envents_df_dict[pix]
+            for drought_type_with_scale in dict_i:
+                if drought_type_with_scale == 'pix':
+                    continue
+                drought_year_list_i = dict_i[drought_type_with_scale]
+                if type(drought_year_list_i) == float:
+                    continue
+                drought_type = drought_type_with_scale.split('_')[0]
+                for year in drought_year_list_i:
+                    pix_list.append(pix)
+                    drought_type_with_scale_list.append(drought_type_with_scale)
+                    drought_type_list.append(drought_type)
+                    drought_year_list.append(year)
+        df = pd.DataFrame()
+        df['pix'] = pix_list
+        df['drought_type'] = drought_type_list
+        df['drought_type_with_scale'] = drought_type_with_scale_list
+        df['drought_year'] = drought_year_list
+        T.mk_dir(join(self.this_class_arr,'dataframe'))
+        T.save_df(df, self.dff)
+        T.df_to_excel(df, self.dff)
+
+
+    def add_max_lag_and_scale(self, df):
+        max_scale_and_lag_df = self.__get_max_scale_and_lag()
+        max_lag_spatial_dict = T.df_to_spatial_dic(max_scale_and_lag_df, 'max_lag')
+        max_scale_spatial_dict = T.df_to_spatial_dic(max_scale_and_lag_df, 'max_scale')
+        # max_r_spatial_dict = T.df_to_spatial_dic(max_scale_and_lag_df, 'max_r')
+        print('adding max_scale...')
+        df = T.add_spatial_dic_to_df(df, max_scale_spatial_dict, 'max_scale')
+        # filter df with max scale
+        selected_index = []
+        for i, row in tqdm(df.iterrows(), total=len(df)):
+            max_scale = row['max_scale']
+            if np.isnan(max_scale):
+                continue
+            drought_type = row['drought_type_with_scale']
+            max_scale = int(max_scale)
+            if f'{max_scale:02d}' in drought_type:
+                selected_index.append(i)
+        df = df.iloc[selected_index]
+
+        print('adding max_lag...')
+        df = T.add_spatial_dic_to_df(df, max_lag_spatial_dict, 'max_lag')
+        # df = T.add_spatial_dic_to_df(df, max_r_spatial_dict, 'max_r')
+        return df
+
+    def __gen_df_init(self):
+        if not os.path.isfile(self.dff):
+            df = pd.DataFrame()
+            T.save_df(df, self.dff)
+            return df
+        else:
+            df = T.load_df(self.dff)
+            return df
+
+    def __get_annual_vals_dict(self,method='mean'):
+        outdir = join(self.this_class_arr, 'annual_vals_dict')
+        T.mk_dir(outdir)
+        outf = join(outdir, f'{method}_annual_vals_dict.npy')
+        if isfile(outf):
+            annual_vals_dict = T.load_npy(outf)
+            return annual_vals_dict
+        data_dict = Meta_information().load_data('NDVI')
+        gs = global_gs
+        annual_vals_dict = {}
+        year_list = global_year_range_list
+        for pix in tqdm(data_dict):
+            vals = data_dict[pix]
+            annual_vals = T.monthly_vals_to_annual_val(vals, gs,method=method)
+            vals_dict_this_pix = dict(zip(year_list, annual_vals))
+            annual_vals_dict[pix] = vals_dict_this_pix
+        T.save_npy(annual_vals_dict, outf)
+        return annual_vals_dict
+
+
+    def __get_drought_events(self):
+        outdir = join(self.this_class_arr, 'drought_events')
+        T.mk_dir(outdir)
+        outf = join(outdir, 'drought_events.df')
+        if isfile(outf):
+            df = T.load_df(outf)
+            return df
+        drought_events_dir = join(Pick_Drought_Events().this_class_arr, 'normal_hot_events')
+        spatial_dict_all = {}
+        for f in T.listdir(drought_events_dir):
+            fpath = join(drought_events_dir, f)
+            var_i = f.split('.')[0]
+            spatial_dict = T.load_npy(fpath)
+            spatial_dict_all[var_i] = spatial_dict
+        df = T.spatial_dics_to_df(spatial_dict_all)
+        T.save_df(df, outf)
+        T.df_to_excel(df, outf)
+        return df
+        pass
+
+    def __get_max_scale_and_lag(self, method='spearman'):
+        outdir = join(self.this_class_arr, 'max_scale_and_lag')
+        T.mk_dir(outdir)
+        outf = join(outdir, 'max_scale_and_lag.df')
+        if isfile(outf):
+            df = T.load_df(outf)
+            return df
+        max_lag_fdir = join(Max_Scale_and_Lag_correlation_SPI().this_class_tif, f'mean_max_scale_month_lag/{method}')
+        max_scale_fdir = join(Max_Scale_and_Lag_correlation_SPI().this_class_tif, f'mean_max_scale_month_lag/{method}')
+        max_r_fdir = join(Max_Scale_and_Lag_correlation_SPI().this_class_tif, f'mean_max_scale_month_lag/{method}')
+        max_lag_f = join(max_lag_fdir, f'{method}_max_lag.tif')
+        max_scale_f = join(max_scale_fdir, f'{method}_max_scale.tif')
+        max_r_f = join(max_r_fdir, f'{method}_max_r.tif')
+
+        max_lag_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(max_lag_f)
+        max_scale_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(max_scale_f)
+        max_r_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(max_r_f)
+
+        dict_all = {'max_lag': max_lag_spatial_dict, 'max_scale': max_scale_spatial_dict, 'max_r': max_r_spatial_dict}
+
+        df = T.spatial_dics_to_df(dict_all)
+        T.save_df(df, outf)
+        T.df_to_excel(df, outf)
+        return df
 
 def line_to_shp(inputlist, outSHPfn):
     ############重要#################
@@ -2323,8 +2555,9 @@ def main():
     # Pick_Drought_Events().run()
     # Drought_events_spatial_temporal_SPI12().run()
     # Temperature_spatial_temporal_analysis().run()
-    Precipitation_spatial_temporal_analysis().run()
+    # Precipitation_spatial_temporal_analysis().run()
     # Resistance_Resilience().run()
+    Net_effect().run()
 
     # gen_world_grid_shp()
     pass
