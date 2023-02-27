@@ -1624,7 +1624,7 @@ class Drought_events_spatial_temporal_SPI12:
                 if T.is_all_nan(vals):
                     continue
                 vals_gs = T.monthly_vals_to_annual_val(vals,gs)
-                vals_gs_dict = dict(zip(global_year_range_list,vals_gs))
+                vals_gs_dict = T.dict_zip(global_year_range_list,vals_gs)
                 spatial_anomaly_dict[pix] = vals_gs_dict
             vals_list = []
             for i,row in tqdm(df.iterrows(),total=len(df)):
@@ -2102,7 +2102,7 @@ class Resistance_Resilience:
             NDVI[NDVI < 0] = np.nan
             NDVI_annual = T.monthly_vals_to_annual_val(NDVI, gs)
             NDVI_annual = T.detrend_vals(NDVI_annual)
-            NDVI_annual_dict = dict(zip(year_list, NDVI_annual))
+            NDVI_annual_dict = T.dict_zip(year_list, NDVI_annual)
             lagged_drought_year = drought_year + lag
             lagged_drought_year = int(lagged_drought_year)
             if lagged_drought_year > global_end_year:
@@ -2141,7 +2141,7 @@ class Resistance_Resilience:
                 NDVI[NDVI < 0] = np.nan
                 NDVI_annual = T.monthly_vals_to_annual_val(NDVI, gs)
                 NDVI_annual = T.detrend_vals(NDVI_annual)
-                NDVI_annual_dict = dict(zip(year_list, NDVI_annual))
+                NDVI_annual_dict = T.dict_zip(year_list, NDVI_annual)
                 lagged_drought_year = drought_year + lag
                 lagged_drought_year = int(lagged_drought_year)
                 if lagged_drought_year > global_end_year:
@@ -2256,6 +2256,9 @@ class Net_effect:
         self.this_class_arr, self.this_class_tif, self.this_class_png = \
             T.mk_class_dir('Net_effect', result_root_this_script, mode=2)
         self.dff = join(self.this_class_arr, 'dataframe/dataframe.df')
+        # self.VI_list = ['NDVI', 'VOD-anomaly', 'CSIF-anomaly', 'VOD-k-band-anomaly']
+        self.VI_list = ['VOD-k-band-anomaly']
+
         pass
 
     def run(self):
@@ -2270,85 +2273,102 @@ class Net_effect:
         self.plot_net_effect()
 
 
-
-        pass
-
     def add_post_n_year_average(self,df):
-        annual_vals_dict_all = self.__get_annual_vals_dict(method='array')
-
-        for relative_year in list(range(5)):
-        # for relative_year in [4]:
-            mean_val_list = []
-            for i,row in tqdm(df.iterrows(),total=len(df),desc=f'{relative_year}'):
-                pix = row['pix']
-                year = row['drought_year']
-                if not pix in annual_vals_dict_all:
-                    mean_val_list.append(np.nan)
-                    continue
-                # print(pix)
-                annual_vals_dict = annual_vals_dict_all[pix]
-                selected_years = list(range(year, year + relative_year+1))
-                selected_vals = []
-                for y in selected_years:
-                    if not y in annual_vals_dict:
-                        selected_vals = []
-                        break
-                    selected_vals.append(annual_vals_dict[y])
-                if len(selected_vals) == 0:
-                    mean_val_list.append(np.nan)
-                    continue
-                # print(len(selected_vals))
-                # print(selected_vals)
-                # mean_val = np.nansum(selected_vals)
-                mean_val = np.nanmean(selected_vals)
-                # print(mean_val)
-                # exit()
-                mean_val_list.append(mean_val)
-                # print(mean_val)
-            col_name = f'post_{relative_year}_year_net_change'
-            df[col_name] = mean_val_list
-        # exit()
+        VI_list = self.VI_list
+        # VI_list = ['VOD-anomaly', 'CSIF-anomaly', ]
+        for VI in VI_list:
+            annual_vals_dict_all = self.__get_annual_vals_dict(VI,method='array')
+            for relative_year in list(range(5)):
+                mean_val_list = []
+                for i,row in tqdm(df.iterrows(),total=len(df),desc=f'{relative_year}'):
+                    pix = row['pix']
+                    year = row['drought_year']
+                    if not pix in annual_vals_dict_all:
+                        mean_val_list.append(np.nan)
+                        continue
+                    # print(pix)
+                    annual_vals_dict = annual_vals_dict_all[pix]
+                    selected_years = list(range(year, year + relative_year+1))
+                    selected_vals = []
+                    for y in selected_years:
+                        if not y in annual_vals_dict:
+                            selected_vals = []
+                            break
+                        selected_vals.append(annual_vals_dict[y])
+                    if len(selected_vals) == 0:
+                        mean_val_list.append(np.nan)
+                        continue
+                    # print(len(selected_vals))
+                    # print(selected_vals)
+                    # mean_val = np.nansum(selected_vals)
+                    # print(selected_vals)
+                    try:
+                        mean_val = np.nanmean(selected_vals)
+                    except:
+                        mean_val = np.nan
+                    # print(mean_val)
+                    # exit()
+                    mean_val_list.append(mean_val)
+                    # print(mean_val)
+                col_name = f'{VI}_post_{relative_year}_year_net_change'
+                df[col_name] = mean_val_list
         return df
 
     def tif_net_effect(self,df):
         outdir = join(self.this_class_tif, 'net_effect')
         T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
         # T.print_head_n(df)
-        df = df.dropna(subset=['post_0_year_net_change'])
+        # df = df.dropna(subset=['post_0_year_net_change'])
         T.print_head_n(df)
-        for y in range(5):
-            col_name = f'post_{y}_year_net_change'
-            for drt in global_drought_type_list:
-                df_drt = df[df['drought_type'] == drt]
-                df_group_dict = T.df_groupby(df_drt,'pix')
-                spatial_dict = {}
-                for pix in tqdm(df_group_dict,desc=f'{drt} {col_name}'):
-                    df_pix = df_group_dict[pix]
-                    val_list = df_pix[col_name].tolist()
-                    if len(val_list) == 0:
-                        continue
-                    vals_mean = np.nanmean(val_list)
-                    spatial_dict[pix] = vals_mean
-                arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
-                outf = join(outdir, f'{drt}_{col_name}.tif')
-                DIC_and_TIF().arr_to_tif(arr, outf)
+        # exit()
+        for VI in self.VI_list:
+            outdir_i = join(outdir, VI)
+            T.mk_dir(outdir_i)
+            for y in range(5):
+                col_name = f'{VI}_post_{y}_year_net_change'
+                for drt in global_drought_type_list:
+                    df_drt = df[df['drought_type'] == drt]
+                    df_group_dict = T.df_groupby(df_drt,'pix')
+                    spatial_dict = {}
+                    for pix in tqdm(df_group_dict,desc=f'{drt} {col_name}'):
+                        df_pix = df_group_dict[pix]
+                        val_list = df_pix[col_name].tolist()
+                        if len(val_list) == 0:
+                            continue
+                        vals_mean = np.nanmean(val_list)
+                        spatial_dict[pix] = vals_mean
+                    arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
+                    outf = join(outdir_i, f'{drt}_{col_name}.tif')
+                    DIC_and_TIF().arr_to_tif(arr, outf)
 
     def plot_net_effect(self):
         fdir = join(self.this_class_tif, 'net_effect')
         outdir = join(self.this_class_png, 'net_effect')
+        T.open_path_and_file(outdir)
         T.mk_dir(outdir)
-        for f in T.listdir(fdir):
-            if not f.endswith('.tif'):
-                continue
-            fpath = join(fdir, f)
-            plt.figure(figsize=(8.8*centimeter_factor, 8.8*centimeter_factor))
-            m,ret = Plot().plot_ortho(fpath,vmin=-0.5,vmax=0.5,cmap=global_cmap)
-            m.colorbar(ret,location='bottom',pad='5%')
-            plt.title(f)
-            outf = join(outdir, f.replace('.tif', '.png'))
+        for VI in self.VI_list:
+            fdir_i = join(fdir, VI)
+            outdir_i = join(outdir, VI)
+            # T.mk_dir(outdir_i)
+            plt.figure(figsize=(16, 8))
             # plt.show()
+            flag = 1
+            for f in T.listdir(fdir_i):
+                if not f.endswith('.tif'):
+                    continue
+                fpath = join(fdir_i, f)
+                ax = plt.subplot(2, 5, flag)
+                m,ret = Plot().plot_ortho(fpath,vmin=-0.5,vmax=0.5,cmap=global_cmap,is_plot_colorbar=False,ax=ax)
+                # m.colorbar(ret,location='bottom',pad='5%')
+                # plt.title(f)
+                flag += 1
+            outf = join(outdir, VI + '.png')
+            plt.tight_layout()
             plt.savefig(outf, dpi=600)
             plt.close()
+            # plt.show()
+
 
 
         pass
@@ -2418,25 +2438,26 @@ class Net_effect:
             df = T.load_df(self.dff)
             return df
 
-    def __get_annual_vals_dict(self,method='mean'):
+    def __get_annual_vals_dict(self,variable,method='mean'):
         outdir = join(self.this_class_arr, 'annual_vals_dict')
         T.mk_dir(outdir)
-        outf = join(outdir, f'{method}_annual_vals_dict.npy')
+        outf = join(outdir, f'{method}_{variable}_annual_vals_dict.npy')
         if isfile(outf):
             annual_vals_dict = T.load_npy(outf)
             return annual_vals_dict
-        data_dict = Meta_information().load_data('NDVI')
+        year_range = global_VIs_year_range_dict[variable]
+        data_dict = Meta_information().load_data(variable,year_range)
         gs = global_gs
         annual_vals_dict = {}
-        year_list = global_year_range_list
+        year_list = global_VIs_year_range_dict[variable]
+        year_list = year_range_str_to_list(year_list)
         for pix in tqdm(data_dict):
             vals = data_dict[pix]
             annual_vals = T.monthly_vals_to_annual_val(vals, gs,method=method)
-            vals_dict_this_pix = dict(zip(year_list, annual_vals))
+            vals_dict_this_pix = T.dict_zip(year_list, annual_vals)
             annual_vals_dict[pix] = vals_dict_this_pix
         T.save_npy(annual_vals_dict, outf)
         return annual_vals_dict
-
 
     def __get_drought_events(self):
         outdir = join(self.this_class_arr, 'drought_events')

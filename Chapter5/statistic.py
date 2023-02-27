@@ -1562,14 +1562,18 @@ class Drought_events_process:
         self.this_class_arr, self.this_class_tif, self.this_class_png = \
             T.mk_class_dir('Drought_events_process', result_root_this_script, mode=2)
         # self.var_list = ['NDVI', 'VPD', 'CCI-SM', 'ET', 'Temperature', 'Precipitation']
-        self.var_list = ['NDVI', 'VPD', 'ERA-SM', 'GLEAM-ET', ]
+        # self.var_list = ['NDVI', 'VPD', 'ERA-SM', 'GLEAM-ET', ]
+        self.var_list = ['NDVI', 'VOD-anomaly', 'CSIF-anomaly', 'VOD-k-band-anomaly']
         pass
 
     def run(self):
         # self.gen_variables_in_drought_proess_monthly()
-        self.plot_variables_in_drought_proess_monthly()
+        # self.plot_variables_in_drought_proess_monthly()
+        # self.plot_variables_in_drought_proess_monthly()
         # self.plot_variables_in_drought_proess_monthly_ELI()
+        self.plot_every_year_pdf()
         pass
+
 
     def gen_variables_in_drought_proess_monthly(self):
         outdir = join(self.this_class_arr, 'variables_in_drought_proess_monthly')
@@ -1579,16 +1583,17 @@ class Drought_events_process:
         df = Load_dataframe().load_chapter5()
         # gs_dict = Growing_season().longterm_growing_season()
         gs = global_gs
-        year_list = list(range(global_start_year, global_end_year + 1))
         for var in var_list:
-            spatial_dict = Meta_information().load_data(var)
+            year_range = global_VIs_year_range_dict[var]
+            year_list = year_range_str_to_list(year_range)
+            spatial_dict = Meta_information().load_data(var,year_range)
             spatial_dict_gs_monthly = {}
             for pix in tqdm(spatial_dict,desc=f'monthly gs {var}'):
                 vals = spatial_dict[pix]
                 vals_gs = T.monthly_vals_to_annual_val(vals, gs, method='array')
                 # vals_gs_reshape = np.reshape(vals,(-1,12))
                 vals_gs_reshape = vals_gs
-                vals_gs_dict = dict(zip(year_list,vals_gs_reshape))
+                vals_gs_dict = T.dict_zip(year_list,vals_gs_reshape)
                 spatial_dict_gs_monthly[pix] = vals_gs_dict
             flatten_vals_list = []
             for i,row in tqdm(df.iterrows(),total=len(df),desc=f'{var}'):
@@ -1646,10 +1651,11 @@ class Drought_events_process:
         for ltd in limited_area_list:
             df_ltd = df[df[ltd_var] == ltd]
             for col in cols:
+            # for col in ['VOD-anomaly']:
                 fname = f'{ltd}_{col}'
                 print(fname)
                 outf = join(outdir, f'{fname}.png')
-                plt.figure(figsize=(14, 6))
+                plt.figure(figsize=(18*centimeter_factor, 6*centimeter_factor))
                 for drt in drought_type_list:
                     df_drt = df_ltd[df_ltd['drought_type'] == drt]
                     vals = df_drt[f'{col}_monthly'].tolist()
@@ -1660,6 +1666,21 @@ class Drought_events_process:
                             continue
                         vals_clean.append(val)
                     vals_clean = np.array(vals_clean)
+                    vals_clean_new = []
+                    for ii in vals_clean:
+                        try:
+                            if T.is_all_nan(ii):
+                                continue
+                            else:
+                                vals_clean_new.append(list(ii))
+                        except:
+                            continue
+                    vals_clean = np.array(vals_clean_new)
+                    # exit()
+                    # for ll in vals_clean:
+                    #     print(len(ll))
+                    # print(vals_clean.shape)
+
                     vals_err = T.uncertainty_err_2d(vals_clean,axis=0)
                     # vals_err = np.nanstd(vals_clean,axis=0)
                     vals_mean = np.nanmean(vals_clean,axis=0)
@@ -1675,9 +1696,11 @@ class Drought_events_process:
                             date_str_list.append(f'{year}-{date_str}')
                     # plt.errorbar(date_list,vals_mean,yerr=vals_err,label=drt,color=drought_type_color[drt])
                     # plt.scatter(date_list,vals_mean,color=drought_type_color[drt],label=drt)
-                    vals_mean = SMOOTH().smooth_convolve(vals_mean,window_len=7)
-                    plt.scatter(date_str_list,vals_mean,color=drought_type_color[drt],label=drt)
+                    # vals_mean = SMOOTH().smooth_convolve(vals_mean,window_len=7)
+                    # vals_err = SMOOTH().smooth_convolve(vals_err,window_len=7)
+                    # plt.scatter(date_str_list,vals_mean,color=drought_type_color[drt],label=drt)
                     plt.plot(date_str_list,vals_mean,color=drought_type_color[drt])
+                    plt.fill_between(date_str_list,vals_mean-vals_err,vals_mean+vals_err,color=drought_type_color[drt],alpha=0.3)
                     # plt.plot(date_list,vals_mean)
                     plt.title(fname)
                     plt.xticks(rotation=45,horizontalalignment='right')
@@ -1750,6 +1773,65 @@ class Drought_events_process:
                 plt.savefig(outf,dpi=300)
                 plt.close()
                 # plt.show()
+
+    def plot_every_year_pdf(self):
+        outdir = join(self.this_class_png,'plot_every_year_pdf')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+        dff = join(self.this_class_arr, 'variables_in_drought_proess_monthly', 'dataframe.df')
+        cols = self.var_list
+        ltd_var = 'ELI_class'
+        drought_type_list = global_drought_type_list
+        ELI_class = global_ELI_class_list
+        gs = global_gs
+        df = T.load_df(dff)
+        year_index_list = range(5)
+        year_index_list = np.array(year_index_list,dtype=int)
+        year_index_list = year_index_list + 4
+        # T.print_head_n(df, 10)
+        for VI in self.var_list:
+            outdir_i = join(outdir,VI)
+            T.mk_dir(outdir_i)
+            for ELI in ELI_class:
+                df_ELI = df[df['ELI_class'] == ELI]
+                for drt in drought_type_list:
+                    df_drt = df_ELI[df_ELI['drought_type'] == drt]
+                    flag = 0
+                    plt.figure(figsize=(9 * centimeter_factor, 4 * centimeter_factor))
+                    for year_ind in year_index_list:
+                        all_vals = []
+                        for i,row in tqdm(df_drt.iterrows(),total=len(df_drt),desc=f'{year_ind}'):
+                            vals = row[f'{VI}_monthly']
+                            vals_year = vals[year_ind*6:(year_ind+1)*6]
+                            for v in vals_year:
+                                if np.isnan(v):
+                                    continue
+                                all_vals.append(v)
+                        all_vals = np.array(all_vals)
+                        all_vals[all_vals<-2] = np.nan
+                        all_vals[all_vals>2] = np.nan
+                        all_vals[all_vals==0] = np.nan
+                        mean = np.nanmedian(all_vals)
+                        # mean = np.nanmean(all_vals)
+                        x,y = Plot().plot_hist_smooth(all_vals, bins=100, interpolate_window=5,alpha=0,range=(-2,2))
+                        y = T.normalize(y,norm_min=0,norm_max=1)
+                        y = y+flag
+                        plt.fill_between(x,y,flag,alpha=0.5,label=f'{year_ind}',color=global_ELI_class_color_dict[ELI],lw=0)
+                        plt.scatter(mean,flag+.5,color=global_ELI_class_color_dict[ELI],zorder=100,s=1)
+                        plt.yticks([])
+                        plt.xticks([-2,-1,0,1,2])
+                        plt.xlim(-2,2)
+                        plt.title(f'{drt}_{ELI}')
+                        flag -= 1
+                        # plt.plot(x,y,label=f'{year_ind}')
+                    # plt.legend()
+                    # plt.show()
+                    outf = join(outdir_i,f'{drt}_{ELI}.pdf')
+                    plt.savefig(outf)
+                    plt.close()
+                    # exit()
+        pass
+
 
 class Rt_Rs_relationship:
     '''
@@ -1865,7 +1947,7 @@ class Over_shoot_drought:
             drought_year = row['drought_year']
             ndvi_anomaly = ndvi_anomaly_dict[pix]
             ndvi_anomaly_annual = T.monthly_vals_to_annual_val(ndvi_anomaly,gs,method='array')
-            ndvi_anomaly_annual_dict = dict(zip(year_range_list,ndvi_anomaly_annual))
+            ndvi_anomaly_annual_dict = T.dict_zip(year_range_list,ndvi_anomaly_annual)
             if not drought_year in ndvi_anomaly_annual_dict:
                 is_over_shoot_list.append(np.nan)
                 continue
@@ -1921,7 +2003,7 @@ class Over_shoot_drought:
                 vals_gs = T.monthly_vals_to_annual_val(vals, gs, method='array')
                 # vals_gs_reshape = np.reshape(vals,(-1,12))
                 vals_gs_reshape = vals_gs
-                vals_gs_dict = dict(zip(year_range_list,vals_gs_reshape))
+                vals_gs_dict = T.dict_zip(year_range_list,vals_gs_reshape)
                 spatial_dict_gs_monthly[pix] = vals_gs_dict
             flatten_vals_list = []
             for i,row in tqdm(df.iterrows(),total=len(df),desc=f'{var}'):
@@ -1967,7 +2049,7 @@ class Over_shoot_drought:
             #     vals_gs = T.monthly_vals_to_annual_val(vals, gs, method='array')
             #     # vals_gs_reshape = np.reshape(vals,(-1,12))
             #     vals_gs_reshape = vals_gs
-            #     vals_gs_dict = dict(zip(year_range_list,vals_gs_reshape))
+            #     vals_gs_dict = T.dict_zip(year_range_list,vals_gs_reshape)
             #     spatial_dict_gs_monthly[pix] = vals_gs_dict
             flatten_vals_list = []
             for i,row in tqdm(df.iterrows(),total=len(df),desc=f'{var}'):
@@ -1981,7 +2063,7 @@ class Over_shoot_drought:
                 spi_vals = spi_spatial_dict[pix]
                 spi_vals = np.array(spi_vals)
                 vals_gs_reshape = T.monthly_vals_to_annual_val(spi_vals, gs, method='array')
-                vals_gs_dict = dict(zip(year_range_list, vals_gs_reshape))
+                vals_gs_dict = T.dict_zip(year_range_list, vals_gs_reshape)
                 year = row['drought_year']
                 year = int(year)
                 pre_year_list = list(range(year-4,year))
@@ -2035,7 +2117,7 @@ class Over_shoot_drought:
                     flatten_vals_list.append(np.nan)
                     continue
                 vals_gs_reshape = T.monthly_vals_to_annual_val(monthly_ELI, gs, method='array')
-                vals_gs_dict = dict(zip(year_range_list, vals_gs_reshape))
+                vals_gs_dict = T.dict_zip(year_range_list, vals_gs_reshape)
                 year = row['drought_year']
                 year = int(year)
                 pre_year_list = list(range(year-4,year))
@@ -2558,11 +2640,11 @@ class Over_shoot_drought:
 
 def main():
     # Dataframe().run()
-    Hot_Normal_Rs_Rt().run()
+    # Hot_Normal_Rs_Rt().run()
     # Water_Energy_ltd().run()
     # ELI_AI_gradient().run()
     # Rt_Rs_change_overtime().run()
-    # Drought_events_process().run()
+    Drought_events_process().run()
     # Rt_Rs_relationship().run()
     # Over_shoot_drought().run()
     pass

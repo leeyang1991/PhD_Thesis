@@ -59,6 +59,8 @@ global_VIs_year_range_dict = {
     'VOD-anomaly': '2003-2015',
     'CSIF-origin': '2001-2015',
     'CSIF-anomaly': '2001-2015',
+    'VOD-k-band-origin': '1988-2015',
+    'VOD-k-band-anomaly': '1988-2015',
 }
 color_list = [
     '#844000',
@@ -126,6 +128,14 @@ class Meta_information:
             },
             'VOD-anomaly': {
                 'path': join(data_root, 'VOD_Xband/per_pix_anomaly_detrend', year_range),
+                'path_type': 'dir',
+            },
+            'VOD-k-band-origin': {
+                'path': join(data_root, 'VOD_Kband/per_pix', year_range),
+                'path_type': 'dir',
+            },
+            'VOD-k-band-anomaly': {
+                'path': join(data_root, 'VOD_Kband/detrend', year_range),
                 'path_type': 'dir',
             },
             'Temperature-detrend': {
@@ -238,3 +248,8 @@ def get_rs_rt_cols():
     for n in post_n_list:
         cols.append('rs_{}'.format(n))
     return cols
+
+def year_range_str_to_list(year_range_str):
+    year_range = year_range_str.split('-')
+    year_range = list(range(int(year_range[0]), int(year_range[1]) + 1))
+    return year_range
