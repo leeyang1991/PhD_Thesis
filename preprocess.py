@@ -781,103 +781,6 @@ class CCI_SM:
         plt.show()
 
 
-class VODCA:
-
-    def __init__(self):
-        self.datadir = join(data_root,'VODCA')
-        pass
-
-    def run(self):
-        # self.check_tif()
-        # self.origin_data_025_per_pix()
-        # self.clean_origin_data_025()
-        # self.dict_to_tif()
-        self.resample()
-        # self.per_pix_05()
-        # self.pick_early_peak_late()
-        pass
-
-    def check_tif(self):
-        fdir = join(self.datadir,'tif025')
-        for f in T.listdir(fdir):
-            print(f)
-            fpath = join(fdir,f)
-            array, originX, originY, pixelWidth, pixelHeight = ToRaster().raster2array(fpath)
-            plt.imshow(array)
-            plt.show()
-
-    def origin_data_025_per_pix(self):
-        fdir = join(self.datadir,'tif025')
-        outdir = join(self.datadir,'per_pix_025')
-        T.mk_dir(outdir)
-        Pre_Process().data_transform(fdir,outdir)
-        pass
-
-    def clean_origin_data_025(self):
-
-        fdir = join(self.datadir,'per_pix_025')
-        outdir = join(self.datadir,'per_pix_025_clean')
-        T.mk_dir(outdir)
-        spatial_dict = T.load_npy_dir(fdir,'')
-        spatial_dict_nan_number = {}
-        gs_list = list(range(4,10))
-        new_spatial_dict = {}
-        for pix in tqdm(spatial_dict):
-            vals = spatial_dict[pix]
-            if T.is_all_nan(vals):
-                continue
-            vals_annual = T.monthly_vals_to_annual_val(vals,gs_list,method='mean')
-            vals_nan_number = np.sum(np.isnan(vals_annual))
-            ratio = 1 - vals_nan_number / len(vals_annual)
-            if ratio != 1:
-                continue
-            new_spatial_dict[pix] = vals
-        T.save_distributed_perpix_dic(new_spatial_dict,outdir)
-
-
-
-    def dict_to_tif(self):
-        fdir = join(self.datadir,'per_pix_025_clean')
-        spatial_dict = T.load_npy_dir(fdir)
-        outdir = join(self.datadir,'tif_per_pix_025_clean')
-        T.mk_dir(outdir)
-        DIC_and_TIF(pixelsize=0.25).pix_dic_to_tif_every_time_stamp(spatial_dict,outdir)
-
-        pass
-
-
-
-    def resample(self):
-        fdir = join(self.datadir,'tif_per_pix_025_clean')
-        outdir = join(self.datadir,'tif_resample')
-        T.mk_dir(outdir)
-        for f in tqdm(T.listdir(fdir)):
-            fpath = join(fdir,f)
-            outf = join(outdir,f)
-            array, originX, originY, pixelWidth, pixelHeight = ToRaster().raster2array(fpath)
-            array_resample = T.resample_nan(array,0.5,pixelWidth)
-            array_resample[array_resample == 0] = np.nan
-            # array_resample = array_resample[::-1]
-            DIC_and_TIF().arr_to_tif(array_resample,outf)
-
-
-    def per_pix_05(self):
-        fdir = join(self.datadir,'tif_resample')
-        outdir = join(self.datadir,'per_pix_05')
-        T.mk_dir(outdir)
-        Pre_Process().data_transform(fdir,outdir)
-        pass
-
-    def pick_early_peak_late(self):
-        fdir = join(self.datadir,'per_pix_05')
-        spatial_dict = T.load_npy_dir(fdir)
-        outdir = join(self.datadir,'per_pix_05_pick_early_peak_late')
-        T.mk_dir(outdir)
-
-
-        pass
-
-
 class VOD_AMSRU:
     '''
     X-band AMSR-E/AMSR2
@@ -914,6 +817,103 @@ class VOD_AMSRU:
             dic = T.load_npy(fpath)
             dic_detrend = T.detrend_dic(dic)
             T.save_npy(dic_detrend, outf)
+        pass
+
+class VOD_Kband:
+    def __init__(self):
+        self.datadir = join(data_root,'VOD_Kband')
+        pass
+
+    def run(self):
+        # self.unzip()
+        # self.nc_to_tif()
+        # self.resample()
+        # self.monthly_compose()
+        # self.move_annual_tif()
+        # self.per_pix()
+        # self.anomaly()
+        self.detrend()
+        pass
+
+    def unzip(self):
+        '''
+        unzip all the zip files in the zips folder
+        half hour to finish
+        :return:
+        '''
+        fdir = join(self.datadir,'zips')
+        outdir = join(self.datadir,'nc')
+        T.unzip(fdir,outdir)
+
+    def nc_to_tif(self):
+        fdir = join(self.datadir,'nc')
+        outdir = '/Volumes/SSD1T/VOD_K_band/tif'
+        T.mk_dir(outdir)
+        for year in T.listdir(fdir):
+            fdir_i = join(fdir,year,year)
+            outdir_i = join(outdir,year)
+            T.mk_dir(outdir_i)
+            for f in tqdm(T.listdir(fdir_i)):
+                fpath = join(fdir_i,f)
+                # outf = join(outdir_i,f.replace('.nc','.tif'))
+                T.nc_to_tif(fpath,'vod',outdir_i)
+
+    def resample(self):
+        fdir = '/Volumes/SSD1T/VOD_K_band/tif'
+        outdir = join(self.datadir,'daily_tif_05')
+        T.mk_dir(outdir)
+        for year in T.listdir(fdir):
+            fdir_i = join(fdir,year)
+            outdir_i = join(outdir,year)
+            T.mk_dir(outdir_i)
+            for f in tqdm(T.listdir(fdir_i)):
+                fpath = join(fdir_i,f)
+                outf = join(outdir_i,f)
+                ToRaster().resample_reproj(fpath,outf,0.5)
+
+    def monthly_compose(self):
+        fdir = join(self.datadir,'daily_tif_05')
+        outdir = join(self.datadir,'monthly_tif_05')
+        T.mk_dir(outdir)
+        for year in T.listdir(fdir):
+            fdir_i = join(fdir,year)
+            outdir_i = join(outdir,year)
+            T.mk_dir(outdir_i)
+            Pre_Process().monthly_compose(fdir_i,outdir_i,method='max')
+
+    def move_annual_tif(self):
+        fdir = join(self.datadir,'monthly_tif_05')
+        outdir = join(self.datadir,'tif')
+        T.mk_dir(outdir)
+        for year in T.listdir(fdir):
+            fdir_i = join(fdir,year)
+            for f in T.listdir(fdir_i):
+                fpath = join(fdir_i,f)
+                outf = join(outdir,f)
+                shutil.copy(fpath,outf)
+
+    def per_pix(self):
+        fdir = join(self.datadir,'tif/1988-2015')
+        outdir = join(self.datadir,'per_pix/1988-2015')
+        T.mk_dir(outdir,force=True)
+        Pre_Process().data_transform(fdir,outdir)
+
+    def anomaly(self):
+        fdir = join(self.datadir,'per_pix/1988-2015')
+        outdir = join(self.datadir,'anomaly/1988-2015')
+        T.mk_dir(outdir,force=True)
+        Pre_Process().cal_anomaly(fdir,outdir)
+
+    def detrend(self):
+        fdir = join(self.datadir,'anomaly/1988-2015')
+        outdir = join(self.datadir,'detrend/1988-2015')
+        T.mk_dir(outdir,force=True)
+        for f in tqdm(T.listdir(fdir)):
+            fpath = join(fdir,f)
+            outf = join(outdir,f)
+            dic = T.load_npy(fpath)
+            dic_detrend = T.detrend_dic(dic)
+            T.save_npy(dic_detrend,outf)
         pass
 
 class CSIF:
@@ -1816,7 +1816,7 @@ def main():
     # Terraclimate().run()
     # GLC2000().run()
     # CCI_SM().run()
-    # VODCA().run()
+    VOD_Kband().run()
     # VOD_AMSRU().run()
     # CSIF().run()
     # Terraclimate().run()
@@ -1827,7 +1827,7 @@ def main():
     # ERA_2m_T().run()
     # GOME2_SIF().run()
     # MODIS_LAI_Yuan().run()
-    MODIS_LAI_Chen().run()
+    # MODIS_LAI_Chen().run()
 
     pass
 
