@@ -62,15 +62,15 @@ global_VIs_year_range_dict = {
     'VOD-k-band-origin': '1988-2015',
     'VOD-k-band-anomaly': '1988-2015',
 }
-color_list = [
+global_color_list = [
     '#844000',
     '#fc9831',
     '#fffbd4',
     '#86b9d2',
     '#064c6c',
 ]
-global_cmap = T.cmap_blend(color_list,)
-global_cmap_r = T.cmap_blend(color_list[::-1])
+global_cmap = T.cmap_blend(global_color_list,)
+global_cmap_r = T.cmap_blend(global_color_list[::-1])
 global_spei_list = ['spei03', 'spei06', 'spei09', 'spei12',
                      'spei15','spei18', 'spei21', 'spei24',
                      ]

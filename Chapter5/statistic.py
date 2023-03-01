@@ -1569,7 +1569,6 @@ class Drought_events_process:
     def run(self):
         # self.gen_variables_in_drought_proess_monthly()
         # self.plot_variables_in_drought_proess_monthly()
-        # self.plot_variables_in_drought_proess_monthly()
         # self.plot_variables_in_drought_proess_monthly_ELI()
         self.plot_every_year_pdf()
         pass
@@ -1637,9 +1636,17 @@ class Drought_events_process:
         }
         return month_dict[num]
 
+
+    def __reshape_9_year(self,vals_mean):
+        vals_mean_reshape = vals_mean.reshape(-1, 6)
+        vals_mean_reshape = vals_mean_reshape[3:]
+        vals_mean_reshape_flatten = vals_mean_reshape.flatten()
+        return vals_mean_reshape_flatten
+
     def plot_variables_in_drought_proess_monthly(self):
         outdir = join(self.this_class_png, 'variables_in_drought_proess_monthly')
         T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
         dff = join(self.this_class_arr, 'variables_in_drought_proess_monthly', 'dataframe.df')
         cols = self.var_list
         ltd_var = 'ELI_class'
@@ -1654,8 +1661,8 @@ class Drought_events_process:
             # for col in ['VOD-anomaly']:
                 fname = f'{ltd}_{col}'
                 print(fname)
-                outf = join(outdir, f'{fname}.png')
-                plt.figure(figsize=(18*centimeter_factor, 6*centimeter_factor))
+                outf = join(outdir, f'{fname}.pdf')
+                plt.figure(figsize=(8*centimeter_factor, 6*centimeter_factor))
                 for drt in drought_type_list:
                     df_drt = df_ltd[df_ltd['drought_type'] == drt]
                     vals = df_drt[f'{col}_monthly'].tolist()
@@ -1681,13 +1688,16 @@ class Drought_events_process:
                     #     print(len(ll))
                     # print(vals_clean.shape)
 
-                    vals_err = T.uncertainty_err_2d(vals_clean,axis=0)
-                    # vals_err = np.nanstd(vals_clean,axis=0)
+                    # vals_err = T.uncertainty_err_2d(vals_clean,axis=0)
+                    vals_err = np.nanstd(vals_clean,axis=0)
+                    vals_err = vals_err / 12.
                     vals_mean = np.nanmean(vals_clean,axis=0)
+                    vals_err = self.__reshape_9_year(vals_err)
+                    vals_mean = self.__reshape_9_year(vals_mean)
                     date_list = []
                     date_str_list = []
                     # for year in range(1996,2005):
-                    for year in range(-4,5):
+                    for year in range(-1,5):
                         # for month in range(1,13):
                         for month in range(gs[0],gs[-1]+1):
                             # date = datetime.datetime(year,month,1)
@@ -1696,18 +1706,20 @@ class Drought_events_process:
                             date_str_list.append(f'{year}-{date_str}')
                     # plt.errorbar(date_list,vals_mean,yerr=vals_err,label=drt,color=drought_type_color[drt])
                     # plt.scatter(date_list,vals_mean,color=drought_type_color[drt],label=drt)
-                    # vals_mean = SMOOTH().smooth_convolve(vals_mean,window_len=7)
-                    # vals_err = SMOOTH().smooth_convolve(vals_err,window_len=7)
+                    # vals_mean = SMOOTH().smooth_convolve(vals_mean,window_len=3)
+                    # vals_err = SMOOTH().smooth_convolve(vals_err,window_len=3)
                     # plt.scatter(date_str_list,vals_mean,color=drought_type_color[drt],label=drt)
                     plt.plot(date_str_list,vals_mean,color=drought_type_color[drt])
-                    plt.fill_between(date_str_list,vals_mean-vals_err,vals_mean+vals_err,color=drought_type_color[drt],alpha=0.3)
+                    plt.fill_between(date_str_list,vals_mean-vals_err,vals_mean+vals_err,color=drought_type_color[drt],alpha=0.3,lw=0)
                     # plt.plot(date_list,vals_mean)
-                    plt.title(fname)
-                    plt.xticks(rotation=45,horizontalalignment='right')
+                    # plt.title(fname)
+                    # plt.xticks(rotation=45,horizontalalignment='right')
+                    plt.xticks(date_str_list[::6],rotation=45,horizontalalignment='right')
                     plt.tight_layout()
-                plt.grid()
-                plt.legend()
+                # plt.grid()
                 # plt.show()
+                plt.hlines(0,0,len(date_str_list)-1,linestyles='--',colors='k')
+                plt.ylim(-1,0.4)
                 plt.savefig(outf,dpi=300)
                 plt.close()
                 # exit()
