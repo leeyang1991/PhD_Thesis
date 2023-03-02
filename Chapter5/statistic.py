@@ -1918,9 +1918,9 @@ class Over_shoot_drought:
         # self.gen_variables_in_drought_proess_monthly()
         # self.add_SPI_in_drought_proess_monthly()
         # self.add_monthly_ELI_in_drought_proess_monthly()
-        self.plot_variables_in_drought_proess_monthly()
+        # self.plot_variables_in_drought_proess_monthly()
         # self.plot_variables_in_drought_proess_monthly_overshoot()
-        # self.over_shoot_ratio_ELI()
+        self.over_shoot_ratio_ELI()
         # self.over_shoot_pfts_koppen_area_ratio_scatter()
         # self.over_shoot_every_5_year_area_ratio()
         # self.rs_rt_vs_overshoot_ELI_matrix()
@@ -2277,9 +2277,11 @@ class Over_shoot_drought:
                 plt.close()
 
     def over_shoot_ratio_ELI(self):
-        df = Load_dataframe().load_chapter5()
+        dff = join(self.this_class_arr, 'pick_overshoot/NDVI_pick_overshoot.df')
+        df = T.load_df(dff)
         outdir = join(self.this_class_png, 'over_shoot_ratio_ELI')
         T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
         ltd_var = 'ELI_class'
         drought_type_list = global_drought_type_list
         ELI_col = 'ELI'
@@ -2327,7 +2329,8 @@ class Over_shoot_drought:
         plt.fill_between(x,y,0,facecolor='gray',alpha=0.2)
         plt.ylabel('ELI density')
         plt.tight_layout()
-        outf = join(outdir, 'eli_hist.png')
+        # outf = join(outdir, 'eli_hist.png')
+        outf = join(outdir, 'eli_hist.pdf')
         plt.savefig(outf,dpi=300)
         plt.close()
 
@@ -2656,9 +2659,9 @@ def main():
     # Water_Energy_ltd().run()
     # ELI_AI_gradient().run()
     # Rt_Rs_change_overtime().run()
-    Drought_events_process().run()
+    # Drought_events_process().run()
     # Rt_Rs_relationship().run()
-    # Over_shoot_drought().run()
+    Over_shoot_drought().run()
     pass
 
 

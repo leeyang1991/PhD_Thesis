@@ -2273,8 +2273,8 @@ class Net_effect:
         # self.tif_net_effect(df)
         # self.plot_net_effect()
         # self.plot_net_effect_boxplot()
-        self.net_effect_df()
-        # self.plot_net_effect_boxplot_ELI()
+        # self.net_effect_df()
+        self.plot_net_effect_boxplot_ELI()
 
 
     def add_post_n_year_average(self,df):
@@ -2515,25 +2515,71 @@ class Net_effect:
 
 
     def plot_net_effect_boxplot_ELI(self):
-        fdir = join(self.this_class_tif, 'net_effect')
-        outdir = join(self.this_class_png, 'net_effect_boxplot_ELI')
+        fdir = join(self.this_class_arr, 'net_effect_dataframe')
+        outdir = join(self.this_class_png, 'plot_net_effect_boxplot_ELI')
         T.mk_dir(outdir)
-        all_data_dict = {}
+        T.open_path_and_file(outdir)
+        dff = join(fdir, 'net_effect_df.df')
+        df = T.load_df(dff)
+        # T.print_head_n(df, 10)
+        ELI_class = global_ELI_class_list
+        # exit()
         for VI in self.VI_list:
             print(VI)
             fdir_i = join(fdir, VI)
-            plt.figure()
+            position_list = [
+                1, 1.2,1.4, 1.6,
+                2, 2.2,2.4, 2.6,
+                3, 3.2,3.4, 3.6,
+                4, 4.2,4.4, 4.6,
+                5, 5.2,5.4, 5.6,
+                             ]
+            color_dict = {
+                'Energy-Limited':'#1D90D1',
+                'Water-Limited':'#EDA7A7',
+            }
             flag = 0
-            for drt in global_drought_type_list:
-                for y in range(5):
-                    print(f'{VI} {drt} {y}')
-                    col_name = f'{drt}_{VI}_post_{y}_year_net_change'
-                    fpath = join(fdir_i, f'{col_name}.tif')
-                    spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
-                    all_data_dict[col_name] = spatial_dict
-        df = T.spatial_dics_to_df(all_data_dict)
-        T.print_head_n(df, 10)
-        exit()
+            plt.figure(figsize=(9*centimeter_factor, 6*centimeter_factor))
+            for y in range(5):
+                for ELI in ELI_class:
+                    for drt in global_drought_type_list:
+                        print(f'{VI} {drt} {y}')
+                        col_name = f'{drt}_{VI}_post_{y}_year_net_change'
+                        df_ELI = df[df['ELI_class']==ELI]
+                        vals = df_ELI[col_name].values
+                        # T.print_head_n(df_ELI)
+                        vals[vals < -50] = np.nan
+                        vals[vals > 50] = np.nan
+                        vals[vals == 0] = np.nan
+                        vals = vals[~np.isnan(vals)]
+                        color_key = f'{ELI}'
+                        boxprops_hot_drought = dict(facecolor=color_dict[color_key], color=color_dict[color_key])
+                        boxprops_normal_drought = dict(facecolor='none', color=color_dict[color_key])
+                        if drt == 'hot-drought':
+                            boxprops = boxprops_hot_drought
+                        else:
+                            boxprops = boxprops_normal_drought
+                        plt.boxplot(vals, positions=[position_list[flag]], showfliers=False,widths=0.15, patch_artist=True,
+                                    boxprops=boxprops,
+                                    capprops=dict(color=color_dict[color_key]),
+                                    whiskerprops=dict(color=color_dict[color_key]),
+                                    # flierprops=dict(color=color_dict[color_key], markeredgecolor=color_dict[color_key]),
+                                    medianprops=dict(color='k')
+                                    )
+                        flag += 1
+            plt.title(VI)
+            plt.hlines(0, 0.8, 5.8, colors='gray', linestyles='dashed', linewidth=0.9,zorder=-99)
+            plt.ylim(-60, 60)
+            plt.xlim(0.8, 5.8)
+            plt.ylabel('Net effect (%)')
+            plt.xticks([1.3,2.3,3.3,4.3,5.3], ['0','1','2','3','4'])
+            plt.xlabel('N year(s) post drought')
+
+            plt.tight_layout()
+            # plt.show()
+            outf = join(outdir, f'{VI}.pdf')
+            plt.savefig(outf)
+            plt.close()
 
 
     def __gen_df_init(self):
