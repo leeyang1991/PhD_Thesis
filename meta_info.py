@@ -81,6 +81,7 @@ global_all_spei_list = [
 
 global_ELI_bins = np.arange(-0.8, 0.75, .05)
 global_lag_list = list(range(0, 7))
+global_drought_timing_list = ['early','mid','late']
 
 
 class Meta_information:

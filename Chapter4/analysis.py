@@ -1,7 +1,7 @@
 # coding=utf-8
 
 from meta_info import *
-result_root_this_script = join(results_root, 'Chapter4/analysis')
+result_root_this_script = join(results_root, 'Chapter4/analysis/')
 land_tif = global_land_tif
 
 class Global_vars:

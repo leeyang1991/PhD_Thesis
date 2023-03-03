@@ -1806,7 +1806,7 @@ class MODIS_LAI_Chen:
 
 def main():
     # GIMMS_NDVI().run()
-    # SPEI().run()
+    SPEI().run()
     # SPI().run()
     # TMP().run()
     # Precipitation().run()
@@ -1816,7 +1816,7 @@ def main():
     # Terraclimate().run()
     # GLC2000().run()
     # CCI_SM().run()
-    VOD_Kband().run()
+    # VOD_Kband().run()
     # VOD_AMSRU().run()
     # CSIF().run()
     # Terraclimate().run()
