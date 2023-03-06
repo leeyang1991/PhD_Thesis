@@ -1,4 +1,5 @@
 # coding=utf-8
+import matplotlib.pyplot as plt
 
 from meta_info import *
 result_root_this_script = join(results_root, 'Chapter4/statistic')
@@ -387,58 +388,51 @@ class Correlation_matrix:
         pass
 
     def run(self):
-        self.foo()
+        self.plot_correlation_matrix(mode='Rmgs')
+        self.plot_correlation_matrix(mode='Rsgs')
         pass
 
-    def foo(self):
+    def plot_correlation_matrix(self,mode='Rmgs'):
+        from biokit.viz import corrplot
         from Chapter4 import analysis
-        dff = join(analysis.Dataframe().this_class_arr,'Dataframe.df')
+        outdir = join(self.this_class_png, 'correlation_matrix')
+        T.mk_dir(outdir)
+        outf = join(outdir, f'{mode}.pdf')
+        T.open_path_and_file(outdir)
+
+        dff = join(analysis.Dataframe().this_class_arr, 'Dataframe.df')
         df = T.load_df(dff)
         # T.print_head_n(df,10)
         # vars_list = self.__Rsgs()
-        vars_list = self.__Rmgs()
-        df = df[df['product']=='spei03']
+        if mode == 'Rmgs':
+            vars_list = self.__Rmgs()
+        elif mode == 'Rsgs':
+            vars_list = self.__Rsgs()
+        else:
+            raise ValueError('mode error')
+        df = df[df['product'] == 'spei03']
         df = df[vars_list]
-        data = df.corr()
-        fig, ax = plt.subplots(1, 1)
-        m = self.plot_corr_ellipses(data, ax=ax, cmap='RdBu_r', clim=[-.3, .3])
-        cb = fig.colorbar(m)
-        cb.set_label('Correlation coefficient')
-        ax.margins(0.1)
-        plt.show()
-
-
-    def plot_corr_ellipses(self, data, ax=None, **kwargs):
-        from matplotlib.collections import EllipseCollection
-        M = np.array(data)
-        if not M.ndim == 2:
-            raise ValueError('data must be a 2D array')
-        if ax is None:
-            fig, ax = plt.subplots(1, 1, subplot_kw={'aspect': 'equal'})
-            ax.set_xlim(-0.5, M.shape[1] - 0.5)
-            ax.set_ylim(-0.5, M.shape[0] - 0.5)
-
-        # xy locations of each ellipse center
-        xy = np.indices(M.shape)[::-1].reshape(2, -1).T
-
-        # set the relative sizes of the major/minor axes according to the strength of
-        # the positive/negative correlation
-        w = np.ones_like(M).ravel()
-        h = 1 - np.abs(M).ravel()
-        a = 45 * np.sign(M).ravel()
-
-        ec = EllipseCollection(widths=w, heights=h, angles=a, units='x', offsets=xy,
-                               transOffset=ax.transData, array=M.ravel(), **kwargs)
-        ax.add_collection(ec)
-
-        # if data is a DataFrame, use the row/column names as tick labels
-        if isinstance(data, pd.DataFrame):
-            ax.set_xticks(np.arange(M.shape[1]))
-            ax.set_xticklabels(data.columns, rotation=90)
-            ax.set_yticks(np.arange(M.shape[0]))
-            ax.set_yticklabels(data.index)
-
-        return ec
+        c = corrplot.Corrplot(df)
+        fig = plt.figure(figsize=(21*centimeter_factor, 21*centimeter_factor))
+        global_color_list = [
+            '#990000',
+            '#990000',
+            '#990000',
+            '#990000',
+            '#ffffff',
+            '#064c6c',
+            '#064c6c',
+            '#064c6c',
+            '#064c6c',
+        ][::-1]
+        cmap = T.cmap_blend(global_color_list,as_cmap=True,n_colors=6)
+        mpl.cm.register_cmap(name='my_colormap', cmap=cmap)
+        c.plot(method='ellipse', shrink=.8, rotation=45, lower='ellipse',
+               grid=True, upper='text', colorbar=True, fontsize=10,fig=fig,
+               cmap='my_colormap', edgecolor='none',facecolor='w',binarise_color=False,)
+        plt.savefig(outf)
+        plt.close()
+        pass
 
     def __Rsgs(self):
         i = 6
@@ -495,7 +489,7 @@ class Correlation_matrix:
 def main():
     # Drought_events().run()
     # SPEI_ts().run()
-    Pairplot().run()
+    Correlation_matrix().run()
     pass
 
 if __name__ == '__main__':
