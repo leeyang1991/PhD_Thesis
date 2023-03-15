@@ -1,4 +1,6 @@
 # coding=utf-8
+import numpy as np
+
 from meta_info import *
 import xymap
 result_root_this_script = join(results_root, 'Chapter3/analysis')
@@ -516,7 +518,9 @@ class VIs_trend:
         # self.plot_trend()
         # self.dataframe_time_sereis()
         # self.plot_time_sereis_ELI()
-        self.plot_time_sereis_ltd()
+        # self.plot_time_sereis_ltd()
+        # self.every_month_time_series()
+        self.plot_every_month_time_series()
         pass
 
     def trend(self):
@@ -681,6 +685,110 @@ class VIs_trend:
             # plt.savefig(outf)
             # plt.close()
         pass
+
+    def every_month_time_series(self):
+        outdir = join(self.this_class_arr,'every_month_time_series')
+        T.mk_dir(outdir)
+        VIs_list = ['NDVI-origin']
+        month_list = list(range(1,13))
+        # for VI in VIs_list[2:]:
+        for VI in VIs_list:
+            year_range = global_VIs_year_range_dict[VI]
+            VI_spatial_dict = Meta_information().load_data(VI, year_range=year_range)
+            monthly_vals_dict_all = {}
+            flag = 1
+            for pix in tqdm(VI_spatial_dict, desc=f'{VI}'):
+
+                r,c = pix
+                if r > 120:
+                    continue
+                VI_vals = VI_spatial_dict[pix]
+                # print(VI_vals)
+                VI_vals = np.array(VI_vals, dtype=np.float)
+                VI_vals[VI_vals < -0] = np.nan
+                VI_vals = VI_vals / 10000.
+                if T.is_all_nan(VI_vals):
+                    continue
+                monthly_vals_dict = {}
+                for mon in month_list:
+                    gs = [mon]
+                    VI_vals_gs = T.monthly_vals_to_annual_val(VI_vals, gs, method='mean')
+                    key = f'{mon:02d}'
+                    monthly_vals_dict[key] = VI_vals_gs
+                monthly_vals_dict_all[pix] = monthly_vals_dict
+                # if flag > 10:
+                #     break
+                # flag += 1
+            df = T.dic_to_df(monthly_vals_dict_all,'pix')
+            outf = join(outdir,f'{VI}.df')
+            T.open_path_and_file(outdir)
+            T.save_df(df,outf)
+            T.df_to_excel(df,outf.replace('.df','.xlsx'))
+
+        pass
+
+    def plot_every_month_time_series(self):
+        from Chapter3 import statistic
+        dff = join(self.this_class_arr, 'every_month_time_series', 'NDVI-origin.df')
+        df = T.load_df(dff)
+        df = self.__AI_reclass(df)
+        year_list = global_year_range_list
+        AI_class_list = T.get_df_unique_val_list(df,'AI_class_detail')
+        # print(AI_class_list)
+        flag = 1
+        for AI_class in AI_class_list:
+            plt.subplot(2,2,flag)
+            df_AI = df[df['AI_class_detail'] == AI_class]
+            DIC_and_TIF().plot_df_spatial_pix(df_AI,global_land_tif)
+            plt.title(AI_class)
+            flag += 1
+
+        plt.show()
+        for AI_class in AI_class_list:
+            # plt.figure()
+            df_AI = df[df['AI_class_detail'] == AI_class]
+            plt.figure(figsize=(10,8))
+            for mon in list(range(1,13)):
+                plt.subplot(4,3,mon)
+                key = f'{mon:02d}'
+                vals = df_AI[key].tolist()
+                vals = np.array(vals)
+                mean = np.nanmean(vals, axis=0)
+                std = np.nanstd(vals, axis=0) / 8.
+                plt.plot(year_list,mean,label=key,color='r')
+                plt.fill_between(year_list, mean-std, mean+std, alpha=0.2,color='gray')
+                plt.legend()
+                # plt.xlabel('Year')
+                # plt.ylabel('NDVI')
+            plt.suptitle(AI_class)
+            plt.tight_layout()
+        plt.show()
+
+    def __AI_reclass(self,df):
+        AI_class = []
+        for i,row in df.iterrows():
+            val = row['aridity_index']
+            if np.isnan(val):
+                label = np.nan
+                AI_class.append(label)
+                continue
+            if val >= 0.65:
+                label = 'Humid'
+                # label = 3
+            elif val < 0.2:
+                label = 'Arid'
+                # label = 0
+            elif val >= 0.2 and val < 0.5:
+                label = 'Semi Arid'
+                # label = 1
+            elif val >= 0.5 and val < 0.65:
+                label = 'Semi Humid'
+            else:
+                print(val)
+                raise ValueError('AI error')
+            AI_class.append(label)
+        df['AI_class_detail'] = AI_class
+        return df
 
 
 class VIs_and_SPEI_correlation:
@@ -1830,14 +1938,14 @@ def main():
     # Water_energy_limited_area_daily().run()
     # Growing_season().run()
     # SPEI_trend().run()
-    # VIs_trend().run()
+    VIs_trend().run()
     # VIs_and_SPEI_correlation().run()
     # VIs_and_SPEI_lag_correlation().run()
     # MAT_MAP().run()
     # Isohydricity().run()
     # Aridity_index().run()
     # Moving_window_correlation().run()
-    ELI_vs_moving_window_correlation().run()
+    # ELI_vs_moving_window_correlation().run()
 
     # gen_world_grid_shp()
     pass
