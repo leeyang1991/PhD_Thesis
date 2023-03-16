@@ -519,7 +519,7 @@ class VIs_trend:
         # self.dataframe_time_sereis()
         # self.plot_time_sereis_ELI()
         # self.plot_time_sereis_ltd()
-        # self.every_month_time_series()
+        self.every_month_time_series()
         self.plot_every_month_time_series()
         pass
 
@@ -688,13 +688,17 @@ class VIs_trend:
 
     def every_month_time_series(self):
         outdir = join(self.this_class_arr,'every_month_time_series')
+        from Chapter3 import statistic
         T.mk_dir(outdir)
-        VIs_list = ['NDVI-origin']
+        # VIs_list = ['NDVI-origin']
+        VIs_list = ['lai3g']
         month_list = list(range(1,13))
         # for VI in VIs_list[2:]:
         for VI in VIs_list:
-            year_range = global_VIs_year_range_dict[VI]
-            VI_spatial_dict = Meta_information().load_data(VI, year_range=year_range)
+            # year_range = global_VIs_year_range_dict[VI]
+            # VI_spatial_dict = Meta_information().load_data(VI, year_range=year_range)
+            data_dir = '/Users/liyang/Desktop/LAI3g'
+            VI_spatial_dict = T.load_npy_dir(data_dir)
             monthly_vals_dict_all = {}
             flag = 1
             for pix in tqdm(VI_spatial_dict, desc=f'{VI}'):
@@ -706,20 +710,23 @@ class VIs_trend:
                 # print(VI_vals)
                 VI_vals = np.array(VI_vals, dtype=np.float)
                 VI_vals[VI_vals < -0] = np.nan
-                VI_vals = VI_vals / 10000.
+                # VI_vals = VI_vals / 10000.
                 if T.is_all_nan(VI_vals):
                     continue
                 monthly_vals_dict = {}
                 for mon in month_list:
                     gs = [mon]
                     VI_vals_gs = T.monthly_vals_to_annual_val(VI_vals, gs, method='mean')
+                    VI_vals_gs_anomaly = VI_vals_gs - np.nanmean(VI_vals_gs)
                     key = f'{mon:02d}'
-                    monthly_vals_dict[key] = VI_vals_gs
+                    # monthly_vals_dict[key] = VI_vals_gs
+                    monthly_vals_dict[key] = VI_vals_gs_anomaly
                 monthly_vals_dict_all[pix] = monthly_vals_dict
                 # if flag > 10:
                 #     break
                 # flag += 1
             df = T.dic_to_df(monthly_vals_dict_all,'pix')
+            df = statistic.Dataframe_func(df).df
             outf = join(outdir,f'{VI}.df')
             T.open_path_and_file(outdir)
             T.save_df(df,outf)
@@ -729,10 +736,13 @@ class VIs_trend:
 
     def plot_every_month_time_series(self):
         from Chapter3 import statistic
-        dff = join(self.this_class_arr, 'every_month_time_series', 'NDVI-origin.df')
+        # dff = join(self.this_class_arr, 'every_month_time_series', 'NDVI-origin.df')
+        dff = join(self.this_class_arr, 'every_month_time_series', 'lai3g.df')
         df = T.load_df(dff)
+        # df = statistic.Dataframe_func(df).df
         df = self.__AI_reclass(df)
-        year_list = global_year_range_list
+        # year_list = global_year_range_list
+        year_list = list(range(1982,2019))
         AI_class_list = T.get_df_unique_val_list(df,'AI_class_detail')
         # print(AI_class_list)
         flag = 1
@@ -742,8 +752,8 @@ class VIs_trend:
             DIC_and_TIF().plot_df_spatial_pix(df_AI,global_land_tif)
             plt.title(AI_class)
             flag += 1
-
         plt.show()
+
         for AI_class in AI_class_list:
             # plt.figure()
             df_AI = df[df['AI_class_detail'] == AI_class]
