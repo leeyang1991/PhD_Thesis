@@ -45,9 +45,90 @@ class Plot_SPEI:
 
         pass
 
+class Plot_ELI:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir(
+            'Plot_ELI',
+            result_root_this_script, mode=2)
+        pass
+
+    def run(self):
+
+        pass
+
+    def kendall_corr_all_vars(self):
+        outdir = join(self.this_class_arr, 'kendall_corr')
+        var_1 = 'GLEAM-ET'
+        var_21 = 'ERA-SM'
+        var_22 = 'CCI-SM'
+        var_3 = 'Temperature'
+        var_31 = 'Radiation'
+        # self.kendall_corr(var_1,var_21,outdir)
+        # self.kendall_corr(var_1,var_22,outdir)
+        # self.kendall_corr(var_1,var_3,outdir)
+        self.kendall_corr(var_1, var_31, outdir)
+
+    def kendall_corr(self, var_1, var_2, outdir):
+        T.mk_dir(outdir)
+        outf = join(outdir, f'{var_1}_{var_2}.df')
+        spatial_dict_1 = Meta_information().load_data(var_1)
+        spatial_dict_2 = Meta_information().load_data(var_1)
+        spatial_dict_corr = {}
+        spatial_dict_corr_p = {}
+        for pix in tqdm(spatial_dict_1):
+            if not pix in spatial_dict_2:
+                continue
+            val1 = spatial_dict_1[pix]
+            val2 = spatial_dict_2[pix]
+            r, p = T.nan_correlation(val1, val2, method='kendall')
+            spatial_dict_corr[pix] = r
+            spatial_dict_corr_p[pix] = p
+
+        spatial_dict_all = {
+            f'{var_1}_{var_2}_r': spatial_dict_corr,
+            f'{var_1}_{var_2}_p': spatial_dict_corr_p,
+        }
+        df = T.spatial_dics_to_df(spatial_dict_all)
+        T.save_df(df, outf)
+        T.df_to_excel(df, outf)
+    def Ecosystem_Limited_Index(self):
+        var_1 = 'GLEAM-ET'
+        var_21 = 'ERA-SM'
+        # var_22 = 'CCI-SM'
+        var_3 = 'Temperature'
+        # var_31 = 'Radiation'
+        fdir = join(self.this_class_arr, 'kendall_corr')
+        outdir = join(self.this_class_tif, 'ELI')
+        T.mk_dir(outdir)
+        outf = join(outdir, f'{var_1}_{var_21}_{var_3}.tif')
+        # outf = join(outdir, f'{var_1}_{var_21}_{var_31}.tif')
+        ELI_equation = 'ELI = corr(ET,SM) - corr(ET,T)'
+        dff1 = join(fdir, f'{var_1}_{var_21}.df')
+        dff2 = join(fdir,f'{var_1}_{var_3}.df')
+        # dff2 = join(fdir, f'{var_1}_{var_31}.df')
+        df1 = T.load_df(dff1)
+        df2 = T.load_df(dff2)
+        spatial_dict1 = T.df_to_spatial_dic(df1, f'{var_1}_{var_21}_r')
+        spatial_dict2 = T.df_to_spatial_dic(df2,f'{var_1}_{var_3}_r')
+        # spatial_dict2 = T.df_to_spatial_dic(df2, f'{var_1}_{var_31}_r')
+
+        ELI_spatial_dict = {}
+        for pix in tqdm(spatial_dict1):
+            if not pix in spatial_dict2:
+                continue
+            val1 = spatial_dict1[pix]
+            val2 = spatial_dict2[pix]
+            ELI = val1 - val2
+            ELI_spatial_dict[pix] = ELI
+
+        DIC_and_TIF().pix_dic_to_tif(ELI_spatial_dict, outf)
+
+
 
 def main():
-    Plot_SPEI().run()
+    # Plot_SPEI().run()
+    Plot_ELI().run()
 
 if __name__ == '__main__':
     main()
