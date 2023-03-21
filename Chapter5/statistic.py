@@ -1948,7 +1948,10 @@ class Over_shoot_drought:
         df = Load_dataframe().load_chapter5()
         # dff = join(Drought_events_proess().this_class_arr, 'variables_in_drought_proess_monthly', 'dataframe.df')
         # df = T.load_df(dff)
-        VI_name = 'NDVI'
+        # VI_name = 'NDVI'
+        # VI_name = 'VOD-anomaly'
+        # VI_name = 'CSIF-anomaly'
+        VI_name = 'VOD-k-band-anomaly'
         # VI_name = 'GOME2_SIF-anomaly'
         year_range = global_VIs_year_range_dict[VI_name]
         ndvi_anomaly_dict = Meta_information().load_data(VI_name, year_range)
@@ -2287,15 +2290,18 @@ class Over_shoot_drought:
                 plt.close()
 
     def over_shoot_ratio_ELI(self):
-        dff = join(self.this_class_arr, 'pick_overshoot/NDVI_pick_overshoot.df')
+        # VI = 'CSIF-anomaly'
+        # VI = 'VOD-anomaly'
+        VI = 'VOD-k-band-anomaly'
+        # VI = 'NDVI'
+        dff = join(self.this_class_arr, f'pick_overshoot/{VI}_pick_overshoot.df')
         df = T.load_df(dff)
         outdir = join(self.this_class_png, 'over_shoot_ratio_ELI')
         T.mk_dir(outdir)
-        T.open_path_and_file(outdir)
         ltd_var = 'ELI_class'
         drought_type_list = global_drought_type_list
         ELI_col = 'ELI'
-
+        plt.figure(figsize=(8.8*centimeter_factor, 7*centimeter_factor))
         # ELI_bins = np.linspace(-0.6, 0.6, 41)
         ELI_bins = np.arange(-0.8, 0.66, 0.05)
         for drt in drought_type_list:
@@ -2317,16 +2323,15 @@ class Over_shoot_drought:
             # plt.figure(figsize=(14, 6))
             x = np.array(x)
             y = np.array(y)
-            y = SMOOTH().smooth_convolve(y,window_len=7)
+            y = SMOOTH().smooth_convolve(y,window_len=9)
             plt.plot(x,y,c=global_drought_type_color_dict[drt],label=drt)
-            plt.scatter(x,y,c=global_drought_type_color_dict[drt])
-        plt.title('over_shoot_ratio_ELI')
+            plt.scatter(x,y,c=global_drought_type_color_dict[drt],s=6)
+        plt.title(VI)
         # plt.grid()
         plt.legend()
         plt.ylabel('over_shoot_ratio (%)')
         plt.xlabel('ELI (Energy-limited --> Water-limited)')
 
-        outf = join(outdir, 'over_shoot_ratio_ELI.png')
         # plt.savefig(outf,dpi=300)
         # plt.close()
         # plt.show()
@@ -2340,9 +2345,10 @@ class Over_shoot_drought:
         plt.ylabel('ELI density')
         plt.tight_layout()
         # outf = join(outdir, 'eli_hist.png')
-        outf = join(outdir, 'eli_hist.pdf')
+        outf = join(outdir, f'{VI}.pdf')
         plt.savefig(outf,dpi=300)
         plt.close()
+        # plt.show()
 
     def over_shoot_pfts_koppen_area_ratio_scatter(self):
         outdir = join(self.this_class_png, 'over_shoot_pfts_koppen_area_ratio_scatter')
@@ -2665,13 +2671,13 @@ class Over_shoot_drought:
 
 def main():
     # Dataframe().run()
-    Hot_Normal_Rs_Rt().run()
+    # Hot_Normal_Rs_Rt().run()
     # Water_Energy_ltd().run()
     # ELI_AI_gradient().run()
     # Rt_Rs_change_overtime().run()
     # Drought_events_process().run()
     # Rt_Rs_relationship().run()
-    # Over_shoot_drought().run()
+    Over_shoot_drought().run()
     pass
 
 
