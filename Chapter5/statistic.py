@@ -201,8 +201,8 @@ class Hot_Normal_Rs_Rt:
         # self.rs_rt_bar_PFTs()
         # self.rs_rt_pfts_koppen_scatter()
         # self.rs_rt_area_ratio_bar()
-        self.rs_rt_area_ratio_bar_two_regions()
-        # self.rs_rt_area_ratio_ELI_matrix()
+        # self.rs_rt_area_ratio_bar_two_regions()
+        self.rs_rt_area_ratio_ELI_matrix()
         # self.rs_rt_pfts_koppen_area_ratio_scatter()
         pass
 
@@ -681,9 +681,18 @@ class Hot_Normal_Rs_Rt:
                     temp.append(ratio)
                 matrix.append(temp)
             matrix = np.array(matrix)
-            plt.figure()
-            plt.imshow(matrix, cmap='RdBu_r', interpolation='nearest', aspect='auto', vmin=0, vmax=55)
-            plt.colorbar()
+            plt.figure(figsize=(8*centimeter_factor, 10*centimeter_factor))
+            # plt.imshow(matrix, cmap='RdBu_r', interpolation='nearest', aspect='auto', vmin=0, vmax=55)
+            # T.color_map_choice()
+            # plt.show()
+
+            # sns.heatmap(matrix, vmin=0, vmax=55, annot=True, fmt='.2f', annot_kws={'size': 8},linewidths=1,cmap='viridis_r')
+            # sns.heatmap(matrix, vmin=0, vmax=55, annot=True, fmt='.2f', annot_kws={'size': 8},linewidths=1,cmap='rocket_r')
+            sns.heatmap(matrix, vmin=0, vmax=55, annot=True, fmt='.0f', annot_kws={'size': 8},linewidths=1,cmap='magma_r')
+            # sns.heatmap(matrix, vmin=0, vmax=55, annot=True, fmt='.2f', annot_kws={'size': 8},linewidths=1,cmap='coolwarm')
+            plt.axis('equal')
+
+            # plt.colorbar()
             plt.xticks(range(len(rs_cols)), rs_cols, rotation=0)
             plt.yticks(range(len(y_ticks)), y_ticks)
             plt.ylabel('Ecological Stress Index\n(Water-limited --> Energy-limited)')
@@ -693,7 +702,8 @@ class Hot_Normal_Rs_Rt:
             outf = join(outdir, f'{drt}.pdf')
             plt.savefig(outf, dpi=300)
             plt.close()
-            plt.show()
+        T.open_path_and_file(outdir)
+        # plt.show()
         # plt.show()
 
 class ELI_AI_gradient:
@@ -2655,13 +2665,13 @@ class Over_shoot_drought:
 
 def main():
     # Dataframe().run()
-    # Hot_Normal_Rs_Rt().run()
+    Hot_Normal_Rs_Rt().run()
     # Water_Energy_ltd().run()
     # ELI_AI_gradient().run()
     # Rt_Rs_change_overtime().run()
     # Drought_events_process().run()
     # Rt_Rs_relationship().run()
-    Over_shoot_drought().run()
+    # Over_shoot_drought().run()
     pass
 
 
