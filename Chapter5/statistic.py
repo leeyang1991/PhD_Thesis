@@ -1,4 +1,5 @@
 # coding=utf-8
+import torch
 
 from meta_info import *
 result_root_this_script = join(results_root, 'Chapter5/statistic')
@@ -2296,6 +2297,7 @@ class Over_shoot_drought:
         # VI = 'NDVI'
         dff = join(self.this_class_arr, f'pick_overshoot/{VI}_pick_overshoot.df')
         df = T.load_df(dff)
+        df = df.dropna(subset=['over_shoot'])
         outdir = join(self.this_class_png, 'over_shoot_ratio_ELI')
         T.mk_dir(outdir)
         ltd_var = 'ELI_class'
@@ -2668,6 +2670,201 @@ class Over_shoot_drought:
 
         pass
 
+class Over_shoot_phenology:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('Over_shoot_drought', result_root_this_script, mode=2)
+        pass
+
+    def run(self):
+        self.add_phenology()
+        self.phenology_hist()
+        # self.phenology_ELI_matrix_overshoot_ratio()
+        # self.phenology_bin_overshoot_ratio()
+        # self.phenology_ELI()
+
+        pass
+
+    def add_phenology(self):
+        from Chapter4 import analysis
+        outdir = join(self.this_class_arr,'dataframe')
+        T.mk_dir(outdir)
+        dff = join(Over_shoot_drought().this_class_arr, 'pick_overshoot/NDVI_pick_overshoot.df')
+        df = T.load_df(dff)
+        outdf = join(outdir,'NDVI.df')
+        sos_f = join(analysis.Main_flow_Early_Peak_Late_Dormant().this_class_arr,'phenology_0.5_deg/early_start.npy')
+        sos_dict = T.load_npy(sos_f)
+        all_year_len = len(global_year_range_list)
+        sos_spatial_dict = {}
+        for pix in sos_dict:
+            sos_list = sos_dict[pix]
+            if len(sos_list) != all_year_len:
+                continue
+            sos_list_anomlay = Pre_Process().cal_anomaly_juping(sos_list)
+            sos_list_anomlay[sos_list_anomlay>40] = np.nan
+            sos_list_anomlay[sos_list_anomlay<-40] = np.nan
+            std = np.nanstd(sos_list)
+            # sos_list_anomlay = sos_list_anomlay/std
+            sos_dict_i = T.dict_zip(global_year_range_list,sos_list_anomlay)
+            sos_spatial_dict[pix] = sos_dict_i
+        sos_list = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            year = row['drought_year']
+            if pix not in sos_spatial_dict:
+                sos_list.append(np.nan)
+                continue
+            sos = sos_spatial_dict[pix][year]
+            sos_list.append(sos)
+        df['sos'] = sos_list
+        T.save_df(df,outdf)
+        T.df_to_excel(df,outdf)
+        T.open_path_and_file(outdir)
+
+    def phenology_hist(self):
+        outdir = join(self.this_class_png,'phenology_hist')
+        T.mk_dir(outdir)
+        dff = join(self.this_class_arr,'dataframe/NDVI.df')
+        df = T.load_df(dff)
+        ELI_list = global_ELI_class_list
+        drought_type_list = global_drought_type_list
+        over_shoot_list = [0,1]
+        flag = 1
+        plt.figure(figsize=(18*centimeter_factor, 6*centimeter_factor))
+        for ELI in ELI_list:
+            plt.subplot(1, 2, flag)
+            plt.title(f'{ELI}')
+            flag += 1
+            df_eli = df[df['ELI_class'] == ELI]
+            for drought_type in drought_type_list:
+                df_drt = df_eli[df_eli['drought_type'] == drought_type]
+                sos_list = df_drt['sos'].tolist()
+                x,y = Plot().plot_hist_smooth(sos_list,bins=80,alpha=0.0)
+                plt.plot(x,y,label=drought_type)
+            plt.legend()
+            plt.xlabel('SOS anomaly')
+            plt.ylabel('Density')
+        plt.tight_layout()
+        outf = join(outdir,'phenology_hist.pdf')
+        plt.show()
+        # plt.savefig(outf)
+        # plt.close()
+        # T.open_path_and_file(outdir)
+
+    def phenology_ELI_matrix_overshoot_ratio(self):
+        dff = join(self.this_class_arr,'dataframe/NDVI.df')
+        df = T.load_df(dff)
+        ELI_bins = np.arange(-0.8, 0.85, .2)
+        SOS_bins = np.arange(-40, 40, 10)
+        drought_type_list = global_drought_type_list
+        for drt in drought_type_list:
+            df_drt = df[df['drought_type'] == drt]
+            df_ELI_bin,df_ELI_bin_str = T.df_bin(df_drt, 'ELI', ELI_bins)
+            matrix = []
+            for name_ELI,df_group_ELI_i in df_ELI_bin:
+                df_SOS_bin,df_SOS_bin_str = T.df_bin(df_group_ELI_i, 'sos', SOS_bins)
+                temp = []
+                for name_SOS,df_group_SOS_i in df_SOS_bin:
+                    over_shoot_list = df_group_SOS_i['over_shoot'].tolist()
+                    if len(over_shoot_list) == 0:
+                        temp.append(np.nan)
+                        continue
+                    one_ratio = over_shoot_list.count(1)/len(over_shoot_list) * 100
+                    temp.append(one_ratio)
+                matrix.append(temp)
+            matrix = np.array(matrix)
+            # matrix[matrix==0] = np.nan
+            plt.figure()
+
+            # plt.imshow(matrix, cmap='jet',vmin=0,vmax=50)
+            sns.heatmap(matrix, vmin=0, vmax=40, annot=True, fmt='.0f', annot_kws={'size': 8}, linewidths=1,
+                        cmap='magma_r')
+            plt.xticks(np.arange(len(df_SOS_bin_str)), df_SOS_bin_str, rotation=90)
+            plt.yticks(np.arange(len(df_ELI_bin_str)), df_ELI_bin_str, rotation=0)
+            plt.title(f'{drt}')
+            plt.xlabel('SOS anomaly')
+            plt.ylabel('ELI')
+        plt.show()
+
+
+        pass
+
+    def phenology_bin_overshoot_ratio(self):
+        outdir = join(self.this_class_png,'phenology_bin_overshoot_ratio')
+        T.mk_dir(outdir)
+        dff = join(self.this_class_arr,'dataframe/NDVI.df')
+        df = T.load_df(dff)
+        SOS_bins = np.arange(-40, 40, 5)
+        drought_type_list = global_drought_type_list
+        ELI_class_list = global_ELI_class_list
+        for drt in drought_type_list:
+            df_drt = df[df['drought_type'] == drt]
+            for eli in ELI_class_list:
+                df_eli = df_drt[df_drt['ELI_class'] == eli]
+                df_SOS_bin,df_SOS_bin_str = T.df_bin(df_eli, 'sos', SOS_bins)
+                ratio_list = []
+                for name_SOS,df_group_SOS_i in df_SOS_bin:
+                    over_shoot_list = df_group_SOS_i['over_shoot'].tolist()
+                    if len(over_shoot_list) == 0:
+                        ratio_list.append(np.nan)
+                        continue
+                    one_ratio = over_shoot_list.count(1)/len(over_shoot_list) * 100
+                    ratio_list.append(one_ratio)
+                # plt.figure()
+                plt.figure(figsize=(8 * centimeter_factor, 6 * centimeter_factor))
+                plt.plot(df_SOS_bin_str,ratio_list)
+                plt.scatter(df_SOS_bin_str,ratio_list,s=20,lw=0,c='r')
+                plt.title(f'{drt} {eli}')
+                plt.xlabel('SOS anomaly')
+                plt.ylabel('Over shoot ratio')
+                plt.ylim(0,35)
+                outf = join(outdir,f'{drt}_{eli}.pdf')
+                plt.savefig(outf)
+                plt.close()
+        # plt.show()
+        T.open_path_and_file(outdir)
+
+        pass
+
+    def phenology_ELI(self):
+        outdir = join(self.this_class_png,'phenology_bin_overshoot_ratio')
+        T.mk_dir(outdir)
+        dff = join(self.this_class_arr,'dataframe/NDVI.df')
+        df = T.load_df(dff)
+        drought_type_list = global_drought_type_list
+        ELI_bins = np.arange(-0.8, 0.85, .05)
+        for drt in drought_type_list:
+            df_drt = df[df['drought_type'] == drt]
+            df_ELI_bin,df_ELI_bin_str = T.df_bin(df_drt, 'ELI', ELI_bins)
+            x = []
+            y = []
+            err = []
+            for name_ELI,df_group_ELI_i in df_ELI_bin:
+                sos_list = df_group_ELI_i['sos'].tolist()
+                if len(sos_list) == 0:
+                    continue
+                sos_mean = np.nanmean(sos_list)
+                # sos_std = np.nanstd(sos_list) / 8.
+                e,_,_ = T.uncertainty_err(sos_list)
+                x.append(name_ELI.left)
+                y.append(sos_mean)
+                err.append(e)
+            # plt.figure()
+            plt.plot(x,y,label=f'{drt}')
+            # plt.scatter(x,y,s=20,lw=0,c='r')
+            plt.fill_between(x, np.array(y) - np.array(err), np.array(y) + np.array(err), alpha=0.2)
+            # plt.title(f'{drt}')
+            plt.xlabel('ELI')
+            plt.ylabel('SOS anomaly')
+        plt.ylim(-10,10)
+        plt.legend()
+        plt.show()
+
+
+
+        pass
+
 
 def main():
     # Dataframe().run()
@@ -2677,7 +2874,8 @@ def main():
     # Rt_Rs_change_overtime().run()
     # Drought_events_process().run()
     # Rt_Rs_relationship().run()
-    Over_shoot_drought().run()
+    # Over_shoot_drought().run()
+    Over_shoot_phenology().run()
     pass
 
 
