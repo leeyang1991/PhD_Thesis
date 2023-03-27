@@ -1,4 +1,5 @@
 # coding=utf-8
+import matplotlib.pyplot as plt
 import torch
 
 from meta_info import *
@@ -2674,15 +2675,18 @@ class Over_shoot_phenology:
 
     def __init__(self):
         self.this_class_arr, self.this_class_tif, self.this_class_png = \
-            T.mk_class_dir('Over_shoot_drought', result_root_this_script, mode=2)
+            T.mk_class_dir('Over_shoot_phenology', result_root_this_script, mode=2)
         pass
 
     def run(self):
-        self.add_phenology()
-        self.phenology_hist()
+        # self.add_phenology()
+        # self.phenology_hist()
         # self.phenology_ELI_matrix_overshoot_ratio()
         # self.phenology_bin_overshoot_ratio()
         # self.phenology_ELI()
+        # self.phenology_deepest_impact()
+        self.phenology_drought_year_tif()
+        self.plot_phenology_drought_year_tif()
 
         pass
 
@@ -2691,6 +2695,7 @@ class Over_shoot_phenology:
         outdir = join(self.this_class_arr,'dataframe')
         T.mk_dir(outdir)
         dff = join(Over_shoot_drought().this_class_arr, 'pick_overshoot/NDVI_pick_overshoot.df')
+        # dff = '/Volumes/NVME2T/PhD_Thesis_project/results/Chapter5/analysis/Net_effect/arr/dataframe/dataframe.df'
         df = T.load_df(dff)
         outdf = join(outdir,'NDVI.df')
         sos_f = join(analysis.Main_flow_Early_Peak_Late_Dormant().this_class_arr,'phenology_0.5_deg/early_start.npy')
@@ -2718,6 +2723,7 @@ class Over_shoot_phenology:
             sos = sos_spatial_dict[pix][year]
             sos_list.append(sos)
         df['sos'] = sos_list
+        # df = Dataframe_func(df).df
         T.save_df(df,outdf)
         T.df_to_excel(df,outdf)
         T.open_path_and_file(outdir)
@@ -2766,20 +2772,27 @@ class Over_shoot_phenology:
                 df_SOS_bin,df_SOS_bin_str = T.df_bin(df_group_ELI_i, 'sos', SOS_bins)
                 temp = []
                 for name_SOS,df_group_SOS_i in df_SOS_bin:
-                    over_shoot_list = df_group_SOS_i['over_shoot'].tolist()
-                    if len(over_shoot_list) == 0:
-                        temp.append(np.nan)
-                        continue
-                    one_ratio = over_shoot_list.count(1)/len(over_shoot_list) * 100
-                    temp.append(one_ratio)
+                    # over_shoot_list = df_group_SOS_i['over_shoot'].tolist()
+                    # rt_list = df_group_SOS_i['rt'].tolist()
+                    # rt_list = df_group_SOS_i['rs_3'].tolist()
+                    rt_list = df_group_SOS_i['NDVI-origin_post_0_year_net_change'].tolist()
+                    # if len(over_shoot_list) == 0:
+                    #     temp.append(np.nan)
+                    #     continue
+                    # one_ratio = over_shoot_list.count(1)/len(over_shoot_list) * 100
+                    # temp.append(one_ratio)
+                    mean = np.nanmean(rt_list)
+                    temp.append(mean)
                 matrix.append(temp)
             matrix = np.array(matrix)
             # matrix[matrix==0] = np.nan
             plt.figure()
 
             # plt.imshow(matrix, cmap='jet',vmin=0,vmax=50)
-            sns.heatmap(matrix, vmin=0, vmax=40, annot=True, fmt='.0f', annot_kws={'size': 8}, linewidths=1,
-                        cmap='magma_r')
+            # sns.heatmap(matrix, vmin=0, vmax=40, annot=True, fmt='.0f', annot_kws={'size': 8}, linewidths=1,
+            #             cmap='magma_r')
+            sns.heatmap(matrix, annot=True, fmt='.2f', annot_kws={'size': 8}, linewidths=1,
+                        cmap='RdBu')
             plt.xticks(np.arange(len(df_SOS_bin_str)), df_SOS_bin_str, rotation=90)
             plt.yticks(np.arange(len(df_ELI_bin_str)), df_ELI_bin_str, rotation=0)
             plt.title(f'{drt}')
@@ -2820,10 +2833,10 @@ class Over_shoot_phenology:
                 plt.ylabel('Over shoot ratio')
                 plt.ylim(0,35)
                 outf = join(outdir,f'{drt}_{eli}.pdf')
-                plt.savefig(outf)
-                plt.close()
-        # plt.show()
-        T.open_path_and_file(outdir)
+                # plt.savefig(outf)
+                # plt.close()
+        plt.show()
+        # T.open_path_and_file(outdir)
 
         pass
 
@@ -2865,6 +2878,96 @@ class Over_shoot_phenology:
 
         pass
 
+    def phenology_deepest_impact(self):
+        # todo: find the deepest impact of drought, and the relationship between Phenology and deepest impact
+        dff = join(self.this_class_arr,'dataframe/NDVI.df')
+        df = T.load_df(dff)
+        df = df[df['drought_type'] == 'hot-drought']
+        # df = df[df['drought_type'] == 'normal-drought']
+        df = df[df['ELI_class'] == 'Energy-Limited']
+        gs = global_gs
+        SOS_bins = np.arange(-40, 40, 4)
+        # SOS_bins = np.arange(-20, 20, 1)
+        VI_spatial_dict = Meta_information().load_data('NDVI')
+        all_year_range = global_year_range_list
+        min_val_list = []
+        for i,row in tqdm(df.iterrows(),total=df.shape[0]):
+            pix = row['pix']
+            year = row['drought_year']
+            VI_vals = VI_spatial_dict[pix]
+            annual_VI = T.monthly_vals_to_annual_val(VI_vals,grow_season=gs,method='array')
+            annual_VI_dict = T.dict_zip(all_year_range,annual_VI)
+            VI_gs = annual_VI_dict[year]
+            min_VI_gs = np.nanmin(VI_gs)
+            # min_VI_gs = np.nanmax(VI_gs)
+            # min_VI_gs = np.nanmean(VI_gs)
+            # min_VI_gs = np.nansum(VI_gs)
+            min_val_list.append(min_VI_gs)
+        df['min_VI_gs'] = min_val_list
+        min_val_bins = np.arange(-1.5,1.6,0.1)
+        # print(min_val_bins)
+        # exit()
+        # df_group,bins_list_str = T.df_bin(df,'sos',SOS_bins)
+        df_group,bins_list_str = T.df_bin(df,'min_VI_gs',min_val_bins)
+        x = []
+        y = []
+        err = []
+        for name,df_group_i in df_group:
+
+            if len(df_group_i) == 0:
+                continue
+            # vals = df_group_i['min_VI_gs'].tolist()
+            vals = df_group_i['sos'].tolist()
+            mean = np.nanmean(vals)
+            # mean = np.nanmedian(vals)
+            # mean = np.nanmin(vals)
+            err_i,_,_ = T.uncertainty_err(vals)
+            # err_i = np.nanstd(vals)
+            x.append(name.left)
+            y.append(mean)
+            err.append(err_i)
+        # x = SMOOTH().smooth_convolve(x,window_len=7)
+        # y = SMOOTH().smooth_convolve(y,window_len=11)
+        # err = SMOOTH().smooth_convolve(err,window_len=11)
+        plt.plot(x,y)
+        plt.fill_between(x, np.array(y) - np.array(err), np.array(y) + np.array(err), alpha=0.2)
+        plt.show()
+
+    def phenology_drought_year_tif(self):
+        outdir = join(self.this_class_tif,'phenology_drought_year')
+        T.mk_dir(outdir)
+        dff = join(self.this_class_arr,'dataframe/NDVI.df')
+        df = T.load_df(dff)
+        drought_type_list = global_drought_type_list
+        for drt in drought_type_list:
+            df_drt = df[df['drought_type'] == drt]
+            df_group_dict = T.df_groupby(df_drt,'pix')
+            spatial_dict = {}
+            for pix in df_group_dict:
+                df_i = df_group_dict[pix]
+                ELI_class = df_i['ELI_class'].tolist()[0]
+                sos = df_i['sos'].tolist()
+                # todo:
+                sos_mean = np.nanmean(sos)
+                spatial_dict[pix] = sos_mean
+            arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
+            out_tif = join(outdir,f'{drt}.tif')
+            DIC_and_TIF().arr_to_tif(arr,out_tif)
+
+    def plot_phenology_drought_year_tif(self):
+        outdir = join(self.this_class_png,'phenology_drought_year')
+        T.mk_dir(outdir)
+        fdir = join(self.this_class_tif,'phenology_drought_year')
+        drt_list = global_drought_type_list
+        for drt in drt_list:
+            fpath = join(fdir,f'{drt}.tif')
+            outf = join(outdir,f'{drt}.png')
+            fig = plt.figure(figsize=(8 * centimeter_factor, 8 * centimeter_factor))
+            Plot().plot_ortho(fpath,vmin=-10,vmax=10,is_plot_colorbar=True,cmap='RdBu')
+            plt.title(drt)
+            plt.savefig(outf, dpi=900)
+            plt.close()
+        T.open_path_and_file(outdir)
 
 def main():
     # Dataframe().run()
