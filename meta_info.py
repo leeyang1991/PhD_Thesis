@@ -78,7 +78,7 @@ global_all_spei_list = [
     'spei01', 'spei02', 'spei03', 'spei04', 'spei05', 'spei06', 'spei07', 'spei08', 'spei09', 'spei10', 'spei11', 'spei12',
     'spei13', 'spei14', 'spei15', 'spei16', 'spei17', 'spei18', 'spei19', 'spei20', 'spei21', 'spei22', 'spei23', 'spei24',
                      ]
-
+global_all_spi_list = [i.replace('spei','spi') for i in global_all_spei_list]
 global_ELI_bins = np.arange(-0.8, 0.75, .05)
 global_lag_list = list(range(0, 7))
 global_drought_timing_list = ['early','mid','late']
