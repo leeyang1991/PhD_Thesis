@@ -2345,6 +2345,7 @@ class Net_effect:
         # df = self.__gen_df_init()
         # df = self.add_max_lag_and_scale(df)
         # df = self.add_post_n_year_average(df)
+        # df = self.add_drought_timing(df)
         # T.save_df(df, self.dff)
         # T.df_to_excel(df, self.dff)
 
@@ -2353,6 +2354,7 @@ class Net_effect:
         # self.plot_net_effect_boxplot()
         # self.net_effect_df()
         self.plot_net_effect_boxplot_ELI()
+        # self.net_effect_drought_timing(df)
 
 
     def add_post_n_year_average(self,df):
@@ -2362,13 +2364,13 @@ class Net_effect:
             year_range = global_VIs_year_range_dict[VI]
             annual_vals_dict_all = self.__get_annual_vals_dict(VI,method='mean',threshold=0)
             for relative_year in list(range(5)):
-                mean_val_list = []
+                net_effect_list = []
                 average_spatial_dict = {}
                 for i,row in tqdm(df.iterrows(),total=len(df),desc=f'{relative_year}'):
                     pix = row['pix']
                     year = row['drought_year']
                     if not pix in annual_vals_dict_all:
-                        mean_val_list.append(np.nan)
+                        net_effect_list.append(np.nan)
                         continue
                     # print(pix)
                     annual_vals_dict = annual_vals_dict_all[pix]
@@ -2381,6 +2383,7 @@ class Net_effect:
                         average_spatial_dict[pix] = longterm_mean
                     else:
                         longterm_mean = average_spatial_dict[pix]
+                    longterm_mean = float(longterm_mean)
                     selected_years = list(range(year, year + relative_year+1))
                     selected_vals = []
                     for y in selected_years:
@@ -2389,7 +2392,7 @@ class Net_effect:
                             break
                         selected_vals.append(annual_vals_dict[y])
                     if len(selected_vals) == 0:
-                        mean_val_list.append(np.nan)
+                        net_effect_list.append(np.nan)
                         continue
                     # print(len(selected_vals))
                     # print(selected_vals)
@@ -2397,23 +2400,48 @@ class Net_effect:
                     # print(selected_vals)
                     # print(selected_vals)
                     selected_vals = np.array(selected_vals, dtype=float)
-                    selected_vals = selected_vals - longterm_mean
+                    selected_vals = (selected_vals - longterm_mean)/longterm_mean
                     try:
-                        mean_val = np.nansum(selected_vals)
+                        sum_val = np.nansum(selected_vals)
                     except:
-                        mean_val = np.nan
+                        sum_val = np.nan
                     # print(mean_val)
                     # exit()
-                    longterm_mean = float(longterm_mean)
-                    ratio = mean_val / longterm_mean * 100
-                    mean_val_list.append(ratio)
+                    net_effect = sum_val / len(selected_vals) * 100
+                    net_effect_list.append(net_effect)
                     # print(mean_val)
                 # arr = DIC_and_TIF().pix_dic_to_spatial_arr(average_spatial_dict)
                 # plt.imshow(arr, cmap='jet')
                 # plt.colorbar()
                 # plt.show()
                 col_name = f'{VI}_post_{relative_year}_year_net_change'
-                df[col_name] = mean_val_list
+                df[col_name] = net_effect_list
+        return df
+
+
+    def add_drought_timing(self,df):
+        gs = global_gs
+        spi_list = global_all_spi_list
+        drought_timing_fdir = join(Pick_Drought_Events().this_class_arr, 'drought_timing_df')
+        drought_timing_fdir_dict = {}
+        for scale in tqdm(spi_list, desc='load spi'):
+            fpath = join(drought_timing_fdir, f'{scale}.df')
+            df_i = T.load_df(fpath)
+            df_i_group = T.df_groupby(df_i, 'pix')
+            drought_timing_fdir_dict[scale] = df_i_group
+
+        drought_mon_list = []
+        for i, row in tqdm(df.iterrows(), total=len(df)):
+            pix = row['pix']
+            scale = row['max_scale']
+            scale = int(scale)
+            scale = f'spi{scale:02d}'
+            drought_year = row['drought_year']
+            df_i = drought_timing_fdir_dict[scale][pix]
+            df_i = df_i[df_i['year'] == drought_year]
+            drought_mon = df_i['mon'].tolist()[0]
+            drought_mon_list.append(drought_mon)
+        df['drought_mon'] = drought_mon_list
         return df
 
     def tif_net_effect(self,df):
@@ -2448,8 +2476,6 @@ class Net_effect:
     def plot_net_effect(self):
         fdir = join(self.this_class_tif, 'net_effect')
         outdir = join(self.this_class_png, 'net_effect')
-
-        T.open_path_and_file(outdir)
         T.mk_dir(outdir)
 
         for VI in self.VI_list:
@@ -2462,7 +2488,7 @@ class Net_effect:
                     col_name = f'{drt}_{VI}_post_{y}_year_net_change'
                     fpath = join(fdir_i, f'{col_name}.tif')
                     ax = plt.subplot(2, 5, flag)
-                    m,ret = Plot().plot_ortho(fpath,vmin=-10,vmax=10,is_plot_colorbar=False,ax=ax,cmap=global_cmap)
+                    m,ret = Plot().plot_ortho(fpath,vmin=-5,vmax=5,is_plot_colorbar=False,ax=ax,cmap=global_cmap)
                     # m,ret = Plot().plot_ortho(fpath,vmin=-10,vmax=10,is_plot_colorbar=True,ax=ax,cmap=global_cmap)
                     # plt.title(col_name)
                     flag += 1
@@ -2472,6 +2498,8 @@ class Net_effect:
             plt.savefig(outf, dpi=300)
             plt.close()
             # plt.show()
+        T.open_path_and_file(outdir)
+
 
     def gen_dataframe(self):
         drought_envents_df = self.__get_drought_events()
@@ -2561,7 +2589,7 @@ class Net_effect:
                 flag += .25
             plt.title(VI)
             plt.hlines(0, -0.25, 4.5, colors='k', linestyles='dashed')
-            plt.ylim(-50, 50)
+            plt.ylim(-35, 16)
             plt.xticks([0, 1, 2, 3, 4], ['1', '2', '3', '4', '5'])
         plt.show()
         pass
@@ -2647,7 +2675,7 @@ class Net_effect:
                         flag += 1
             plt.title(VI)
             plt.hlines(0, 0.8, 5.8, colors='gray', linestyles='dashed', linewidth=0.9,zorder=-99)
-            plt.ylim(-60, 60)
+            # plt.ylim(-30, 30)
             plt.xlim(0.8, 5.8)
             plt.ylabel('Net effect (%)')
             plt.xticks([1.3,2.3,3.3,4.3,5.3], ['0','1','2','3','4'])
@@ -2659,6 +2687,11 @@ class Net_effect:
             plt.savefig(outf)
             plt.close()
 
+
+    def net_effect_drought_timing(self):
+
+
+        pass
 
     def __gen_df_init(self):
         if not os.path.isfile(self.dff):
@@ -2806,12 +2839,12 @@ def main():
     # Growing_season().run()
     # Max_Scale_and_Lag_correlation_SPEI().run()
     # Max_Scale_and_Lag_correlation_SPI().run()
-    Pick_Drought_Events().run()
+    # Pick_Drought_Events().run()
     # Drought_events_spatial_temporal_SPI12().run()
     # Temperature_spatial_temporal_analysis().run()
     # Precipitation_spatial_temporal_analysis().run()
     # Resistance_Resilience().run()
-    # Net_effect().run()
+    Net_effect().run()
 
     # gen_world_grid_shp()
     pass
