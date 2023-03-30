@@ -2328,11 +2328,11 @@ class Resistance_Resilience:
         T.df_to_excel(df, outf)
         return df
 
-class Net_effect:
+class Net_effect_annual:
 
     def __init__(self):
         self.this_class_arr, self.this_class_tif, self.this_class_png = \
-            T.mk_class_dir('Net_effect', result_root_this_script, mode=2)
+            T.mk_class_dir('Net_effect_annual', result_root_this_script, mode=2)
         self.dff = join(self.this_class_arr, 'dataframe/dataframe.df')
         # self.VI_list = ['NDVI', 'VOD-anomaly', 'CSIF-anomaly', 'VOD-k-band-anomaly']
         # self.VI_list = ['VOD-k-band-anomaly']
@@ -2342,7 +2342,7 @@ class Net_effect:
 
     def run(self):
         # self.gen_dataframe()
-        # df = self.__gen_df_init()
+        df = self.__gen_df_init()
         # df = self.add_max_lag_and_scale(df)
         # df = self.add_post_n_year_average(df)
         # df = self.add_drought_timing(df)
@@ -2350,12 +2350,12 @@ class Net_effect:
         # T.df_to_excel(df, self.dff)
 
         # self.tif_net_effect(df)
-        # self.plot_net_effect()
+        self.plot_net_effect()
         # self.plot_net_effect_boxplot()
         # self.net_effect_df()
-        self.plot_net_effect_boxplot_ELI()
-        # self.net_effect_drought_timing(df)
-
+        # self.plot_net_effect_boxplot_ELI()
+        # self.net_effect_drought_timing_annual_vals()
+        # self.net_effect_drought_timing_monthly_vals()
 
     def add_post_n_year_average(self,df):
         VI_list = self.VI_list
@@ -2400,6 +2400,9 @@ class Net_effect:
                     # print(selected_vals)
                     # print(selected_vals)
                     selected_vals = np.array(selected_vals, dtype=float)
+                    print(selected_vals)
+                    plt.plot(selected_vals)
+                    plt.show()
                     selected_vals = (selected_vals - longterm_mean)/longterm_mean
                     try:
                         sum_val = np.nansum(selected_vals)
@@ -2447,13 +2450,14 @@ class Net_effect:
     def tif_net_effect(self,df):
         outdir = join(self.this_class_tif, 'net_effect')
         T.mk_dir(outdir)
-        T.open_path_and_file(outdir)
         # exit()
         # T.print_head_n(df)
         # df = df.dropna(subset=['post_0_year_net_change'])
         T.print_head_n(df)
+        VI_list = self.VI_list
+        VI_list = VI_list[0:1]
         # exit()
-        for VI in self.VI_list:
+        for VI in VI_list:
             outdir_i = join(outdir, VI)
             T.mk_dir(outdir_i)
             for y in range(5):
@@ -2464,6 +2468,7 @@ class Net_effect:
                     spatial_dict = {}
                     for pix in tqdm(df_group_dict,desc=f'{drt} {col_name}'):
                         df_pix = df_group_dict[pix]
+                        ELI_class = df_pix['ELI_class'].tolist()[0]
                         val_list = df_pix[col_name].tolist()
                         if len(val_list) == 0:
                             continue
@@ -2472,13 +2477,15 @@ class Net_effect:
                     arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
                     outf = join(outdir_i, f'{drt}_{col_name}.tif')
                     DIC_and_TIF().arr_to_tif(arr, outf)
+        T.open_path_and_file(outdir)
 
     def plot_net_effect(self):
         fdir = join(self.this_class_tif, 'net_effect')
         outdir = join(self.this_class_png, 'net_effect')
         T.mk_dir(outdir)
-
-        for VI in self.VI_list:
+        VI_list = self.VI_list
+        VI_list = VI_list[0:1]
+        for VI in VI_list:
             plt.figure(figsize=(16, 6))
             flag = 1
             for drt in global_drought_type_list:
@@ -2487,6 +2494,8 @@ class Net_effect:
                     fdir_i = join(fdir, VI)
                     col_name = f'{drt}_{VI}_post_{y}_year_net_change'
                     fpath = join(fdir_i, f'{col_name}.tif')
+                    # todo: readme
+                    # exit()
                     ax = plt.subplot(2, 5, flag)
                     m,ret = Plot().plot_ortho(fpath,vmin=-5,vmax=5,is_plot_colorbar=False,ax=ax,cmap=global_cmap)
                     # m,ret = Plot().plot_ortho(fpath,vmin=-10,vmax=10,is_plot_colorbar=True,ax=ax,cmap=global_cmap)
@@ -2688,10 +2697,131 @@ class Net_effect:
             plt.close()
 
 
-    def net_effect_drought_timing(self):
+    def net_effect_drought_timing_annual_vals(self):
+        outdir = join(self.this_class_png,'net_effect_drought_timing/annual_vals')
+        T.mk_dir(outdir)
+        # from Chapter5 import statistic
+        df = self.__gen_df_init()
+        # df = statistic.Dataframe_func(df).df
+        # T.save_df(df,self.dff)
+        # T.df_to_excel(df,self.dff)
+        # T.print_head_n(df, 10)
+        # exit()
+        VI_list = self.VI_list
+        # VI_list = VI_list[0:1]
+        ELI_class_list = global_ELI_class_list
+        drt_list = global_drought_type_list
+        mon_list = list(range(5,11))
+        y_lim_dict = {'NDVI-origin':{'Energy-Limited':(-1.5,1), 'Water-Limited':(-10,2)},
+                      'CSIF-origin':{'Energy-Limited':(-10,3), 'Water-Limited':(-35,10)},
+                        'VOD-origin':{'Energy-Limited':(-3,3), 'Water-Limited':(-10,2)},
+                        'VOD-k-band-origin':{'Energy-Limited':(-1,1), 'Water-Limited':(-10,1)},
+                      }
+        for VI in VI_list:
+            print(VI)
+            flag = 1
+            outf = join(outdir, f'{VI}.pdf')
+            plt.figure(figsize=(20*centimeter_factor, 7.5*centimeter_factor))
+            for ELI in ELI_class_list:
+                for year in range(5):
+                    col_name = f'{VI}_post_{year}_year_net_change'
+                    df_eli = df[df['ELI_class']==ELI]
+                    plt.subplot(2,5,flag)
+                    flag += 1
+                    for drt in drt_list:
+                        df_drt = df_eli[df_eli['drought_type']==drt]
+                        df_group = T.df_groupby(df_drt,'drought_mon')
+                        x = []
+                        y = []
+                        err = []
+                        for mon in mon_list:
+                            df_mon = df_group[mon]
+                            vals = df_mon[col_name].tolist()
+                            vals = np.array(vals)
+                            mean = np.nanmean(vals)
+                            err_i,_,_ = T.uncertainty_err(vals)
+                            # err_i = np.nanstd(vals) / 8.
+                            x.append(mon)
+                            y.append(mean)
+                            err.append(err_i)
+                        x = np.array(x)
+                        y = np.array(y)
+                        err = np.array(err)
+                        plt.plot(x,y,label=drt,zorder=9,color=global_drought_type_color_dict[drt])
+                        plt.hlines(0, 5, 10, colors='gray', linestyles='dashed', linewidth=0.9, zorder=-99)
+                        plt.scatter(x,y,s=10,linewidths=0,zorder=99)
+                        plt.fill_between(x, y - err, y + err, alpha=0.2)
+                    # plt.title(f'{VI} {ELI} {year}')
+                    # plt.legend()
+                    plt.ylim(y_lim_dict[VI][ELI])
+                    plt.xticks(mon_list)
+            plt.tight_layout()
+            plt.savefig(outf)
+            plt.close()
+        T.open_path_and_file(outdir)
 
-
-        pass
+    def net_effect_drought_timing_monthly_vals(self):
+        outdir = join(self.this_class_png,'net_effect_drought_timing/monthly_vals')
+        T.mk_dir(outdir)
+        # from Chapter5 import statistic
+        df = self.__gen_df_init()
+        # df = statistic.Dataframe_func(df).df
+        # T.save_df(df,self.dff)
+        # T.df_to_excel(df,self.dff)
+        T.print_head_n(df, 10)
+        exit()
+        VI_list = self.VI_list
+        # VI_list = VI_list[0:1]
+        ELI_class_list = global_ELI_class_list
+        drt_list = global_drought_type_list
+        mon_list = list(range(4,11))
+        y_lim_dict = {'NDVI-origin':{'Energy-Limited':(-1.5,1), 'Water-Limited':(-10,2)},
+                      'CSIF-origin':{'Energy-Limited':(-10,3), 'Water-Limited':(-35,10)},
+                        'VOD-origin':{'Energy-Limited':(-3,3), 'Water-Limited':(-10,2)},
+                        'VOD-k-band-origin':{'Energy-Limited':(-1,1), 'Water-Limited':(-10,1)},
+                      }
+        for VI in VI_list:
+            print(VI)
+            flag = 1
+            outf = join(outdir, f'{VI}.pdf')
+            plt.figure(figsize=(20*centimeter_factor, 7.5*centimeter_factor))
+            for ELI in ELI_class_list:
+                for year in range(5):
+                    col_name = f'{VI}_post_{year}_year_net_change'
+                    df_eli = df[df['ELI_class']==ELI]
+                    plt.subplot(2,5,flag)
+                    flag += 1
+                    for drt in drt_list:
+                        df_drt = df_eli[df_eli['drought_type']==drt]
+                        df_group = T.df_groupby(df_drt,'drought_mon')
+                        x = []
+                        y = []
+                        err = []
+                        for mon in mon_list:
+                            df_mon = df_group[mon]
+                            vals = df_mon[col_name].tolist()
+                            vals = np.array(vals)
+                            mean = np.nanmean(vals)
+                            err_i,_,_ = T.uncertainty_err(vals)
+                            # err_i = np.nanstd(vals) / 8.
+                            x.append(mon)
+                            y.append(mean)
+                            err.append(err_i)
+                        x = np.array(x)
+                        y = np.array(y)
+                        err = np.array(err)
+                        plt.plot(x,y,label=drt,zorder=9,color=global_drought_type_color_dict[drt])
+                        plt.hlines(0, 5, 10, colors='gray', linestyles='dashed', linewidth=0.9, zorder=-99)
+                        plt.scatter(x,y,s=10,linewidths=0,zorder=99)
+                        plt.fill_between(x, y - err, y + err, alpha=0.2)
+                    # plt.title(f'{VI} {ELI} {year}')
+                    # plt.legend()
+                    plt.ylim(y_lim_dict[VI][ELI])
+                    plt.xticks(mon_list)
+            plt.tight_layout()
+            plt.savefig(outf)
+            plt.close()
+        T.open_path_and_file(outdir)
 
     def __gen_df_init(self):
         if not os.path.isfile(self.dff):
@@ -2770,6 +2900,582 @@ class Net_effect:
         T.df_to_excel(df, outf)
         return df
 
+
+class Net_effect_monthly:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = \
+            T.mk_class_dir('Net_effect_monthly', result_root_this_script, mode=2)
+        self.dff = join(self.this_class_arr, 'dataframe/dataframe.df')
+        # self.VI_list = ['NDVI', 'VOD-anomaly', 'CSIF-anomaly', 'VOD-k-band-anomaly']
+        # self.VI_list = ['VOD-k-band-anomaly']
+        self.VI_list = ['NDVI-origin','CSIF-origin','VOD-origin','VOD-k-band-origin']
+
+        pass
+
+    def run(self):
+        # self.gen_dataframe()
+        # df = self.__gen_df_init()
+        # df = self.add_max_lag_and_scale(df)
+        # df = self.add_post_n_year_average(df)
+        # exit()
+        # df = self.add_drought_timing(df)
+        # T.save_df(df, self.dff)
+        # T.df_to_excel(df, self.dff)
+
+        # self.tif_net_effect(df)
+        # self.plot_net_effect()
+        # self.plot_net_effect_boxplot()
+        # self.net_effect_df()
+        # self.plot_net_effect_boxplot_ELI()
+        # self.net_effect_drought_timing_annual_vals()
+        self.net_effect_drought_timing_monthly_vals()
+
+    def add_post_n_year_average(self,df):
+        VI_list = self.VI_list
+        # VI_list = ['VOD-anomaly', 'CSIF-anomaly', ]
+        gs = global_gs
+        for VI in VI_list:
+            year_range_list = global_VIs_year_range_dict[VI]
+            year_range_list = year_range_str_to_list(year_range_list)
+            data_dict_percentage = self.__get_percentage_vals_dict(VI)
+            for relative_year in list(range(5)):
+                net_effect_list = []
+                for i,row in tqdm(df.iterrows(),total=len(df),desc=f'{relative_year}'):
+                    pix = row['pix']
+                    year = row['drought_year']
+                    if not pix in data_dict_percentage:
+                        net_effect_list.append(np.nan)
+                        continue
+                    # print(pix)
+                    vals = data_dict_percentage[pix]
+                    annual_vals = T.monthly_vals_to_annual_val(vals,grow_season=gs,method='array')
+                    annual_vals_dict = T.dict_zip(year_range_list, annual_vals)
+                    selected_years = list(range(year, year + relative_year+1))
+                    selected_vals = []
+                    for y in selected_years:
+                        if not y in annual_vals_dict:
+                            selected_vals = []
+                            break
+                        selected_vals.append(annual_vals_dict[y])
+                    if len(selected_vals) == 0:
+                        net_effect_list.append(np.nan)
+                        continue
+                    selected_vals = np.array(selected_vals)
+                    selected_vals = selected_vals.flatten()
+                    try:
+                        net_effect = np.nanmean(selected_vals)
+                    except:
+                        net_effect = np.nan
+                        print(selected_vals)
+                    net_effect_list.append(net_effect)
+                col_name = f'{VI}_post_{relative_year}_year_net_change'
+                df[col_name] = net_effect_list
+        return df
+
+
+    def add_drought_timing(self,df):
+        gs = global_gs
+        spi_list = global_all_spi_list
+        drought_timing_fdir = join(Pick_Drought_Events().this_class_arr, 'drought_timing_df')
+        drought_timing_fdir_dict = {}
+        for scale in tqdm(spi_list, desc='load spi'):
+            fpath = join(drought_timing_fdir, f'{scale}.df')
+            df_i = T.load_df(fpath)
+            df_i_group = T.df_groupby(df_i, 'pix')
+            drought_timing_fdir_dict[scale] = df_i_group
+
+        drought_mon_list = []
+        for i, row in tqdm(df.iterrows(), total=len(df)):
+            pix = row['pix']
+            scale = row['max_scale']
+            scale = int(scale)
+            scale = f'spi{scale:02d}'
+            drought_year = row['drought_year']
+            df_i = drought_timing_fdir_dict[scale][pix]
+            df_i = df_i[df_i['year'] == drought_year]
+            drought_mon = df_i['mon'].tolist()[0]
+            drought_mon_list.append(drought_mon)
+        df['drought_mon'] = drought_mon_list
+        return df
+
+    def tif_net_effect(self,df):
+        outdir = join(self.this_class_tif, 'net_effect')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+        # exit()
+        # T.print_head_n(df)
+        # df = df.dropna(subset=['post_0_year_net_change'])
+        T.print_head_n(df)
+        # exit()
+        for VI in self.VI_list:
+            outdir_i = join(outdir, VI)
+            T.mk_dir(outdir_i)
+            for y in range(5):
+                col_name = f'{VI}_post_{y}_year_net_change'
+                for drt in global_drought_type_list:
+                    df_drt = df[df['drought_type'] == drt]
+                    df_group_dict = T.df_groupby(df_drt,'pix')
+                    spatial_dict = {}
+                    for pix in tqdm(df_group_dict,desc=f'{drt} {col_name}'):
+                        df_pix = df_group_dict[pix]
+                        val_list = df_pix[col_name].tolist()
+                        if len(val_list) == 0:
+                            continue
+                        vals_mean = np.nanmean(val_list)
+                        spatial_dict[pix] = vals_mean
+                    arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
+                    outf = join(outdir_i, f'{drt}_{col_name}.tif')
+                    DIC_and_TIF().arr_to_tif(arr, outf)
+
+    def plot_net_effect(self):
+        fdir = join(self.this_class_tif, 'net_effect')
+        outdir = join(self.this_class_png, 'net_effect')
+        T.mk_dir(outdir)
+
+        for VI in self.VI_list:
+            plt.figure(figsize=(16, 6))
+            flag = 1
+            for drt in global_drought_type_list:
+                for y in range(5):
+                    print(f'{VI} {drt} {y}')
+                    fdir_i = join(fdir, VI)
+                    col_name = f'{drt}_{VI}_post_{y}_year_net_change'
+                    fpath = join(fdir_i, f'{col_name}.tif')
+                    ax = plt.subplot(2, 5, flag)
+                    m,ret = Plot().plot_ortho(fpath,vmin=-5,vmax=5,is_plot_colorbar=False,ax=ax,cmap=global_cmap)
+                    # m,ret = Plot().plot_ortho(fpath,vmin=-10,vmax=10,is_plot_colorbar=True,ax=ax,cmap=global_cmap)
+                    # plt.title(col_name)
+                    flag += 1
+                    # plt.show()
+            outf = join(outdir, VI + '.png')
+            plt.tight_layout()
+            plt.savefig(outf, dpi=300)
+            plt.close()
+            # plt.show()
+        T.open_path_and_file(outdir)
+
+
+    def gen_dataframe(self):
+        drought_envents_df = self.__get_drought_events()
+        drought_envents_df_dict = T.df_to_dic(drought_envents_df, 'pix')
+        pix_list = []
+        drought_type_with_scale_list = []
+        drought_type_list = []
+        drought_year_list = []
+        for pix in tqdm(drought_envents_df_dict):
+            dict_i = drought_envents_df_dict[pix]
+            for drought_type_with_scale in dict_i:
+                if drought_type_with_scale == 'pix':
+                    continue
+                drought_year_list_i = dict_i[drought_type_with_scale]
+                if type(drought_year_list_i) == float:
+                    continue
+                drought_type = drought_type_with_scale.split('_')[0]
+                for year in drought_year_list_i:
+                    pix_list.append(pix)
+                    drought_type_with_scale_list.append(drought_type_with_scale)
+                    drought_type_list.append(drought_type)
+                    drought_year_list.append(year)
+        df = pd.DataFrame()
+        df['pix'] = pix_list
+        df['drought_type'] = drought_type_list
+        df['drought_type_with_scale'] = drought_type_with_scale_list
+        df['drought_year'] = drought_year_list
+        # df = statistic.Dataframe_func(df).df
+        T.mk_dir(join(self.this_class_arr,'dataframe'))
+        T.save_df(df, self.dff)
+        T.df_to_excel(df, self.dff)
+
+
+
+    def add_max_lag_and_scale(self, df):
+        from Chapter5 import statistic
+        max_scale_and_lag_df = self.__get_max_scale_and_lag()
+        max_lag_spatial_dict = T.df_to_spatial_dic(max_scale_and_lag_df, 'max_lag')
+        max_scale_spatial_dict = T.df_to_spatial_dic(max_scale_and_lag_df, 'max_scale')
+        # max_r_spatial_dict = T.df_to_spatial_dic(max_scale_and_lag_df, 'max_r')
+        print('adding max_scale...')
+        df = T.add_spatial_dic_to_df(df, max_scale_spatial_dict, 'max_scale')
+        # filter df with max scale
+        selected_index = []
+        for i, row in tqdm(df.iterrows(), total=len(df)):
+            max_scale = row['max_scale']
+            if np.isnan(max_scale):
+                continue
+            drought_type = row['drought_type_with_scale']
+            max_scale = int(max_scale)
+            if f'{max_scale:02d}' in drought_type:
+                selected_index.append(i)
+        df = df.iloc[selected_index]
+
+        print('adding max_lag...')
+        df = T.add_spatial_dic_to_df(df, max_lag_spatial_dict, 'max_lag')
+        # df = T.add_spatial_dic_to_df(df, max_r_spatial_dict, 'max_r')
+        df = statistic.Dataframe_func(df).df
+
+        return df
+
+    def plot_net_effect_boxplot(self):
+        fdir = join(self.this_class_tif, 'net_effect')
+        outdir = join(self.this_class_png, 'plot_net_effect_boxplot')
+        T.mk_dir(outdir)
+        for VI in self.VI_list:
+            print(VI)
+            fdir_i = join(fdir, VI)
+            plt.figure()
+            flag = 0
+            for drt in global_drought_type_list:
+                # plt.figure()
+                for y in range(5):
+                    print(f'{VI} {drt} {y}')
+                    col_name = f'{drt}_{VI}_post_{y}_year_net_change'
+                    fpath = join(fdir_i, f'{col_name}.tif')
+                    spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
+                    arr = DIC_and_TIF().pix_dic_to_spatial_arr(spatial_dict)
+                    arr[arr<-50] = np.nan
+                    arr[arr>50] = np.nan
+                    arr[arr==0] = np.nan
+                    arr = arr.flatten()
+                    arr = arr[~np.isnan(arr)]
+                    # plt.hist(arr, bins=100)
+                    # plt.title(col_name)
+                    # outf = join(outdir, f'{col_name}.png')
+                    # plt.savefig(outf, dpi=300)
+                    # plt.close()
+                    plt.boxplot(arr, positions=[y+flag], showfliers=False)
+                    # x,y = Plot().plot_hist_smooth(arr, bins=100, alpha=0)
+                    # plt.plot(x,y,label=f'{col_name}')
+                flag += .25
+            plt.title(VI)
+            plt.hlines(0, -0.25, 4.5, colors='k', linestyles='dashed')
+            plt.ylim(-35, 16)
+            plt.xticks([0, 1, 2, 3, 4], ['1', '2', '3', '4', '5'])
+        plt.show()
+        pass
+
+
+    def net_effect_df(self):
+        from Chapter5 import statistic
+        fdir = join(self.this_class_tif, 'net_effect')
+        outdir = join(self.this_class_arr, 'net_effect_dataframe')
+        T.mk_dir(outdir)
+        outf = join(outdir, 'net_effect_df.df')
+        all_data_dict = {}
+        for VI in self.VI_list:
+            print(VI)
+            fdir_i = join(fdir, VI)
+            plt.figure()
+            flag = 0
+            for drt in global_drought_type_list:
+                for y in range(5):
+                    print(f'{VI} {drt} {y}')
+                    col_name = f'{drt}_{VI}_post_{y}_year_net_change'
+                    fpath = join(fdir_i, f'{col_name}.tif')
+                    spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
+                    all_data_dict[col_name] = spatial_dict
+        df = T.spatial_dics_to_df(all_data_dict)
+        df = statistic.Dataframe_func(df).df
+        T.save_df(df, outf)
+        T.df_to_excel(df, outf)
+
+
+    def plot_net_effect_boxplot_ELI(self):
+        fdir = join(self.this_class_arr, 'net_effect_dataframe')
+        outdir = join(self.this_class_png, 'plot_net_effect_boxplot_ELI')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+        dff = join(fdir, 'net_effect_df.df')
+        df = T.load_df(dff)
+        # T.print_head_n(df, 10)
+        ELI_class = global_ELI_class_list
+        # exit()
+        for VI in self.VI_list:
+            print(VI)
+            fdir_i = join(fdir, VI)
+            position_list = [
+                1, 1.2,1.4, 1.6,
+                2, 2.2,2.4, 2.6,
+                3, 3.2,3.4, 3.6,
+                4, 4.2,4.4, 4.6,
+                5, 5.2,5.4, 5.6,
+                             ]
+            color_dict = {
+                'Energy-Limited':'#1D90D1',
+                'Water-Limited':'#EDA7A7',
+            }
+            flag = 0
+            plt.figure(figsize=(9*centimeter_factor, 6*centimeter_factor))
+            for y in range(5):
+                for ELI in ELI_class:
+                    for drt in global_drought_type_list:
+                        print(f'{VI} {drt} {y}')
+                        col_name = f'{drt}_{VI}_post_{y}_year_net_change'
+                        df_ELI = df[df['ELI_class']==ELI]
+                        vals = df_ELI[col_name].values
+                        # T.print_head_n(df_ELI)
+                        vals[vals < -50] = np.nan
+                        vals[vals > 50] = np.nan
+                        vals[vals == 0] = np.nan
+                        vals = vals[~np.isnan(vals)]
+                        color_key = f'{ELI}'
+                        boxprops_hot_drought = dict(facecolor=color_dict[color_key], color=color_dict[color_key])
+                        boxprops_normal_drought = dict(facecolor='none', color=color_dict[color_key])
+                        if drt == 'hot-drought':
+                            boxprops = boxprops_hot_drought
+                        else:
+                            boxprops = boxprops_normal_drought
+                        plt.boxplot(vals, positions=[position_list[flag]], showfliers=False,widths=0.15, patch_artist=True,
+                                    boxprops=boxprops,
+                                    capprops=dict(color=color_dict[color_key]),
+                                    whiskerprops=dict(color=color_dict[color_key]),
+                                    # flierprops=dict(color=color_dict[color_key], markeredgecolor=color_dict[color_key]),
+                                    medianprops=dict(color='k')
+                                    )
+                        flag += 1
+            plt.title(VI)
+            plt.hlines(0, 0.8, 5.8, colors='gray', linestyles='dashed', linewidth=0.9,zorder=-99)
+            # plt.ylim(-30, 30)
+            plt.xlim(0.8, 5.8)
+            plt.ylabel('Net effect (%)')
+            plt.xticks([1.3,2.3,3.3,4.3,5.3], ['0','1','2','3','4'])
+            plt.xlabel('N year(s) post drought')
+
+            plt.tight_layout()
+            plt.show()
+            # outf = join(outdir, f'{VI}.pdf')
+            # plt.savefig(outf)
+            # plt.close()
+
+
+    def net_effect_drought_timing_annual_vals(self):
+        outdir = join(self.this_class_png,'net_effect_drought_timing/annual_vals')
+        T.mk_dir(outdir)
+        # from Chapter5 import statistic
+        df = self.__gen_df_init()
+        # df = statistic.Dataframe_func(df).df
+        # T.save_df(df,self.dff)
+        # T.df_to_excel(df,self.dff)
+        # T.print_head_n(df, 10)
+        # exit()
+        VI_list = self.VI_list
+        # VI_list = VI_list[0:1]
+        ELI_class_list = global_ELI_class_list
+        drt_list = global_drought_type_list
+        mon_list = list(range(5,11))
+        y_lim_dict = {'NDVI-origin':{'Energy-Limited':(-1.5,1), 'Water-Limited':(-10,2)},
+                      'CSIF-origin':{'Energy-Limited':(-10,3), 'Water-Limited':(-35,10)},
+                        'VOD-origin':{'Energy-Limited':(-3,3), 'Water-Limited':(-10,2)},
+                        'VOD-k-band-origin':{'Energy-Limited':(-1,1), 'Water-Limited':(-10,1)},
+                      }
+        for VI in VI_list:
+            print(VI)
+            flag = 1
+            outf = join(outdir, f'{VI}.pdf')
+            plt.figure(figsize=(20*centimeter_factor, 7.5*centimeter_factor))
+            for ELI in ELI_class_list:
+                for year in range(5):
+                    col_name = f'{VI}_post_{year}_year_net_change'
+                    df_eli = df[df['ELI_class']==ELI]
+                    plt.subplot(2,5,flag)
+                    flag += 1
+                    for drt in drt_list:
+                        df_drt = df_eli[df_eli['drought_type']==drt]
+                        df_group = T.df_groupby(df_drt,'drought_mon')
+                        x = []
+                        y = []
+                        err = []
+                        for mon in mon_list:
+                            df_mon = df_group[mon]
+                            vals = df_mon[col_name].tolist()
+                            vals = np.array(vals)
+                            mean = np.nanmean(vals)
+                            err_i,_,_ = T.uncertainty_err(vals)
+                            # err_i = np.nanstd(vals) / 8.
+                            x.append(mon)
+                            y.append(mean)
+                            err.append(err_i)
+                        x = np.array(x)
+                        y = np.array(y)
+                        err = np.array(err)
+                        plt.plot(x,y,label=drt,zorder=9,color=global_drought_type_color_dict[drt])
+                        plt.hlines(0, 5, 10, colors='gray', linestyles='dashed', linewidth=0.9, zorder=-99)
+                        plt.scatter(x,y,s=10,linewidths=0,zorder=99)
+                        plt.fill_between(x, y - err, y + err, alpha=0.2)
+                    # plt.title(f'{VI} {ELI} {year}')
+                    # plt.legend()
+                    plt.ylim(y_lim_dict[VI][ELI])
+                    plt.xticks(mon_list)
+            plt.tight_layout()
+            plt.savefig(outf)
+            plt.close()
+        T.open_path_and_file(outdir)
+
+    def net_effect_drought_timing_monthly_vals(self):
+        outdir = join(self.this_class_png,'net_effect_drought_timing/monthly_vals')
+        T.mk_dir(outdir,force=True)
+        # from Chapter5 import statistic
+        df = self.__gen_df_init()
+        # df = statistic.Dataframe_func(df).df
+        # T.save_df(df,self.dff)
+        # T.df_to_excel(df,self.dff)
+        # T.print_head_n(df, 10)
+        # exit()
+        VI_list = self.VI_list
+        # VI_list = VI_list[0:1]
+        ELI_class_list = global_ELI_class_list
+        drt_list = global_drought_type_list
+        mon_list = list(range(4,11))
+        y_lim_dict = {'NDVI-origin':{'Energy-Limited':(-1.5,1), 'Water-Limited':(-10,2)},
+                      'CSIF-origin':{'Energy-Limited':(-10,3), 'Water-Limited':(-35,10)},
+                        'VOD-origin':{'Energy-Limited':(-3,3), 'Water-Limited':(-10,2)},
+                        'VOD-k-band-origin':{'Energy-Limited':(-1,1), 'Water-Limited':(-10,1)},
+                      }
+        for VI in VI_list:
+            print(VI)
+            flag = 1
+            outf = join(outdir, f'{VI}.pdf')
+            plt.figure(figsize=(20*centimeter_factor, 7.5*centimeter_factor))
+            for ELI in ELI_class_list:
+                for year in range(5):
+                    col_name = f'{VI}_post_{year}_year_net_change'
+                    df_eli = df[df['ELI_class']==ELI]
+                    plt.subplot(2,5,flag)
+                    flag += 1
+                    for drt in drt_list:
+                        df_drt = df_eli[df_eli['drought_type']==drt]
+                        df_group = T.df_groupby(df_drt,'drought_mon')
+                        x = []
+                        y = []
+                        err = []
+                        for mon in mon_list:
+                            df_mon = df_group[mon]
+                            vals = df_mon[col_name].tolist()
+                            vals = np.array(vals)
+                            mean = np.nanmean(vals)
+                            err_i,_,_ = T.uncertainty_err(vals)
+                            # err_i = np.nanstd(vals) / 8.
+                            x.append(mon)
+                            y.append(mean)
+                            err.append(err_i)
+                        x = np.array(x)
+                        y = np.array(y)
+                        err = np.array(err)
+                        plt.plot(x,y,label=drt,zorder=9,color=global_drought_type_color_dict[drt])
+                        plt.hlines(0, 5, 10, colors='gray', linestyles='dashed', linewidth=0.9, zorder=-99)
+                        plt.scatter(x,y,s=10,linewidths=0,zorder=99)
+                        plt.fill_between(x, y - err, y + err, alpha=0.2)
+                    # plt.title(f'{VI} {ELI} {year}')
+                    # plt.legend()
+                    plt.ylim(y_lim_dict[VI][ELI])
+                    plt.xticks(mon_list)
+            plt.tight_layout()
+            # plt.savefig(outf)
+            # plt.close()
+            plt.show()
+        T.open_path_and_file(outdir)
+
+    def __gen_df_init(self):
+        if not os.path.isfile(self.dff):
+            df = pd.DataFrame()
+            T.save_df(df, self.dff)
+            return df
+        else:
+            df = T.load_df(self.dff)
+            return df
+
+    def __get_percentage_vals_dict(self,variable):
+        outdir = join(self.this_class_arr, 'percentage_vals_dict')
+        T.mk_dir(outdir)
+        outf = join(outdir, f'{variable}.npy')
+        if isfile(outf):
+            annual_vals_dict = T.load_npy(outf)
+            return annual_vals_dict
+        year_range = global_VIs_year_range_dict[variable]
+        data_dict = Meta_information().load_data(variable,year_range)
+        spatial_dict = {}
+        for pix in tqdm(data_dict):
+            vals = data_dict[pix]
+            vals = np.array(vals)
+            vals[vals<0] = np.nan
+            if T.is_all_nan(vals):
+                continue
+            vals_percentage = self.__cal_anomaly_percentage(vals)
+            spatial_dict[pix] = vals_percentage * 100
+        T.save_npy(spatial_dict, outf)
+        return spatial_dict
+
+    def __get_drought_events(self):
+        outdir = join(self.this_class_arr, 'drought_events')
+        T.mk_dir(outdir)
+        outf = join(outdir, 'drought_events.df')
+        if isfile(outf):
+            df = T.load_df(outf)
+            return df
+        drought_events_dir = join(Pick_Drought_Events().this_class_arr, 'normal_hot_events')
+        spatial_dict_all = {}
+        for f in T.listdir(drought_events_dir):
+            fpath = join(drought_events_dir, f)
+            var_i = f.split('.')[0]
+            spatial_dict = T.load_npy(fpath)
+            spatial_dict_all[var_i] = spatial_dict
+        df = T.spatial_dics_to_df(spatial_dict_all)
+        T.save_df(df, outf)
+        T.df_to_excel(df, outf)
+        return df
+        pass
+
+    def __get_max_scale_and_lag(self, method='spearman'):
+        outdir = join(self.this_class_arr, 'max_scale_and_lag')
+        T.mk_dir(outdir)
+        outf = join(outdir, 'max_scale_and_lag.df')
+        if isfile(outf):
+            df = T.load_df(outf)
+            return df
+        max_lag_fdir = join(Max_Scale_and_Lag_correlation_SPI().this_class_tif, f'mean_max_scale_month_lag/{method}')
+        max_scale_fdir = join(Max_Scale_and_Lag_correlation_SPI().this_class_tif, f'mean_max_scale_month_lag/{method}')
+        max_r_fdir = join(Max_Scale_and_Lag_correlation_SPI().this_class_tif, f'mean_max_scale_month_lag/{method}')
+        max_lag_f = join(max_lag_fdir, f'{method}_max_lag.tif')
+        max_scale_f = join(max_scale_fdir, f'{method}_max_scale.tif')
+        max_r_f = join(max_r_fdir, f'{method}_max_r.tif')
+
+        max_lag_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(max_lag_f)
+        max_scale_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(max_scale_f)
+        max_r_spatial_dict = DIC_and_TIF().spatial_tif_to_dic(max_r_f)
+
+        dict_all = {'max_lag': max_lag_spatial_dict, 'max_scale': max_scale_spatial_dict, 'max_r': max_r_spatial_dict}
+
+        df = T.spatial_dics_to_df(dict_all)
+        T.save_df(df, outf)
+        T.df_to_excel(df, outf)
+        return df
+
+    def __cal_anomaly_percentage(self, vals):
+        # 清洗数据
+        climatology_means = []
+        climatology_std = []
+        # vals = signal.detrend(vals)
+        for m in range(1, 13):
+            one_mon = []
+            for i in range(len(vals)):
+                mon = i % 12 + 1
+                if mon == m:
+                    one_mon.append(vals[i])
+            mean = np.nanmean(one_mon)
+            std = np.nanstd(one_mon)
+            climatology_means.append(mean)
+            climatology_std.append(std)
+
+        # 算法2
+        pix_anomaly = []
+        for i in range(len(vals)):
+            mon = i % 12
+            mean_ = climatology_means[mon]
+            anomaly = (vals[i] - mean_) / mean_
+            pix_anomaly.append(anomaly)
+        pix_anomaly = np.array(pix_anomaly)
+        return pix_anomaly
+
 def line_to_shp(inputlist, outSHPfn):
     ############重要#################
     gdal.SetConfigOption("SHAPE_ENCODING", "GBK")
@@ -2844,7 +3550,8 @@ def main():
     # Temperature_spatial_temporal_analysis().run()
     # Precipitation_spatial_temporal_analysis().run()
     # Resistance_Resilience().run()
-    Net_effect().run()
+    Net_effect_annual().run()
+    # Net_effect_monthly().run()
 
     # gen_world_grid_shp()
     pass
