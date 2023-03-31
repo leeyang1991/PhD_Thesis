@@ -2676,17 +2676,25 @@ class Over_shoot_phenology:
     def __init__(self):
         self.this_class_arr, self.this_class_tif, self.this_class_png = \
             T.mk_class_dir('Over_shoot_phenology', result_root_this_script, mode=2)
+        self.VI_list = ['NDVI', 'CSIF-anomaly', 'VOD-anomaly', 'VOD-k-band-anomaly']
         pass
 
     def run(self):
         # self.add_phenology()
+        # self.add_drought_timing()
+
         # self.phenology_hist()
         # self.phenology_ELI_matrix_overshoot_ratio()
         # self.phenology_bin_overshoot_ratio()
         # self.phenology_ELI()
         # self.phenology_deepest_impact()
-        self.phenology_drought_year_tif()
+        # self.phenology_drought_year_tif()
         self.plot_phenology_drought_year_tif()
+        # self.phenology_and_drought_timing()
+        # self.add_NDVI_process()
+        # self.add_Temprature_process()
+        # self.process_drought_timing()
+        # self.neteffect_drought_timing()
 
         pass
 
@@ -2695,7 +2703,6 @@ class Over_shoot_phenology:
         outdir = join(self.this_class_arr,'dataframe')
         T.mk_dir(outdir)
         dff = join(Over_shoot_drought().this_class_arr, 'pick_overshoot/NDVI_pick_overshoot.df')
-        # dff = '/Volumes/NVME2T/PhD_Thesis_project/results/Chapter5/analysis/Net_effect/arr/dataframe/dataframe.df'
         df = T.load_df(dff)
         outdf = join(outdir,'NDVI.df')
         sos_f = join(analysis.Main_flow_Early_Peak_Late_Dormant().this_class_arr,'phenology_0.5_deg/early_start.npy')
@@ -2727,6 +2734,36 @@ class Over_shoot_phenology:
         T.save_df(df,outdf)
         T.df_to_excel(df,outdf)
         T.open_path_and_file(outdir)
+
+    def add_drought_timing(self):
+        from Chapter5 import analysis
+        dff = join(self.this_class_arr,'dataframe/NDVI.df')
+        df = T.load_df(dff)
+        gs = global_gs
+        spi_list = global_all_spi_list
+        drought_timing_fdir = join(analysis.Pick_Drought_Events().this_class_arr,'drought_timing_df')
+        drought_timing_fdir_dict = {}
+        for scale in tqdm(spi_list,desc='load spi'):
+            fpath = join(drought_timing_fdir,f'{scale}.df')
+            df_i = T.load_df(fpath)
+            df_i_group = T.df_groupby(df_i,'pix')
+            drought_timing_fdir_dict[scale] = df_i_group
+
+        drought_mon_list = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            scale = row['max_scale']
+            scale = int(scale)
+            scale = f'spi{scale:02d}'
+            drought_year = row['drought_year']
+            df_i = drought_timing_fdir_dict[scale][pix]
+            df_i = df_i[df_i['year']==drought_year]
+            drought_mon =df_i['mon'].tolist()[0]
+            drought_mon_list.append(drought_mon)
+        df['drought_mon'] = drought_mon_list
+        T.save_df(df,dff)
+        T.df_to_excel(df,dff)
+
 
     def phenology_hist(self):
         outdir = join(self.this_class_png,'phenology_hist')
@@ -2882,11 +2919,12 @@ class Over_shoot_phenology:
         # todo: find the deepest impact of drought, and the relationship between Phenology and deepest impact
         dff = join(self.this_class_arr,'dataframe/NDVI.df')
         df = T.load_df(dff)
-        df = df[df['drought_type'] == 'hot-drought']
+        # df = df[df['drought_type'] == 'hot-drought']
         # df = df[df['drought_type'] == 'normal-drought']
-        df = df[df['ELI_class'] == 'Energy-Limited']
+        # df = df[df['ELI_class'] == 'Energy-Limited']
         gs = global_gs
         SOS_bins = np.arange(-40, 40, 4)
+        # SOS_bins = np.arange(-25, 0, 1)
         # SOS_bins = np.arange(-20, 20, 1)
         VI_spatial_dict = Meta_information().load_data('NDVI')
         all_year_range = global_year_range_list
@@ -2904,11 +2942,11 @@ class Over_shoot_phenology:
             # min_VI_gs = np.nansum(VI_gs)
             min_val_list.append(min_VI_gs)
         df['min_VI_gs'] = min_val_list
-        min_val_bins = np.arange(-1.5,1.6,0.1)
+        # min_val_bins = np.arange(-1.5,1.6,0.1)
         # print(min_val_bins)
         # exit()
-        # df_group,bins_list_str = T.df_bin(df,'sos',SOS_bins)
-        df_group,bins_list_str = T.df_bin(df,'min_VI_gs',min_val_bins)
+        df_group,bins_list_str = T.df_bin(df,'sos',SOS_bins)
+        # df_group,bins_list_str = T.df_bin(df,'min_VI_gs',min_val_bins)
         x = []
         y = []
         err = []
@@ -2916,8 +2954,8 @@ class Over_shoot_phenology:
 
             if len(df_group_i) == 0:
                 continue
-            # vals = df_group_i['min_VI_gs'].tolist()
-            vals = df_group_i['sos'].tolist()
+            vals = df_group_i['min_VI_gs'].tolist()
+            # vals = df_group_i['sos'].tolist()
             mean = np.nanmean(vals)
             # mean = np.nanmedian(vals)
             # mean = np.nanmin(vals)
@@ -2959,15 +2997,230 @@ class Over_shoot_phenology:
         T.mk_dir(outdir)
         fdir = join(self.this_class_tif,'phenology_drought_year')
         drt_list = global_drought_type_list
+        # T.color_map_choice()
+        # plt.show()
+        color_list = ['purple','#FFFFCC','g'][::-1]
+        cmap = T.cmap_blend(color_list)
+        plt.register_cmap(name='mycmap',cmap=cmap)
         for drt in drt_list:
             fpath = join(fdir,f'{drt}.tif')
             outf = join(outdir,f'{drt}.png')
             fig = plt.figure(figsize=(8 * centimeter_factor, 8 * centimeter_factor))
-            Plot().plot_ortho(fpath,vmin=-10,vmax=10,is_plot_colorbar=True,cmap='RdBu')
+            Plot().plot_ortho(fpath,vmin=-10,vmax=10,is_plot_colorbar=True,cmap='mycmap')
             plt.title(drt)
+            # plt.show()
             plt.savefig(outf, dpi=900)
             plt.close()
         T.open_path_and_file(outdir)
+
+    def phenology_and_drought_timing(self):
+        outdir = join(self.this_class_png,'phenology_and_drought_timing')
+        T.mk_dir(outdir)
+        dff = join(self.this_class_arr,'dataframe/NDVI.df')
+        df = T.load_df(dff)
+        # T.print_head_n(df,10)
+        mon_list = range(4,11)
+        mon_list = list(mon_list)
+        drt_list = global_drought_type_list
+        ELI_class_list = global_ELI_class_list
+        flag = 1
+
+        plt.figure(figsize=(16*centimeter_factor, 8*centimeter_factor))
+        for ELI in ELI_class_list:
+            df_ELI = df[df['ELI_class'] == ELI]
+            plt.subplot(1, 2, flag)
+            flag += 1
+            plt.title(f'{ELI}')
+            for drt in drt_list:
+                df_drt = df_ELI[df_ELI['drought_type'] == drt]
+                df_group_dict = T.df_groupby(df_drt, 'drought_mon')
+                x = []
+                y = []
+                err = []
+                box_list = []
+                for mon in mon_list:
+                    df_i = df_group_dict[mon]
+                    sos_list = df_i['sos'].tolist()
+                    sos_list = T.remove_np_nan(sos_list)
+                    mean = np.nanmean(sos_list)
+                    err_i,_,_ = T.uncertainty_err(sos_list)
+                    x.append(mon)
+                    y.append(mean)
+                    err.append(err_i)
+                    box_list.append(sos_list)
+                # plt.boxplot(box_list,labels=mon_list,showfliers=False)
+                plt.plot(x,y,label=drt)
+                plt.scatter(x,y,zorder=10)
+                plt.fill_between(x, np.array(y) - np.array(err), np.array(y) + np.array(err), alpha=0.2)
+                plt.xticks(mon_list)
+        outf = join(outdir,f'phenology_and_drought_timing.pdf')
+        plt.savefig(outf)
+        plt.close()
+        T.open_path_and_file(outdir)
+        pass
+
+    def add_NDVI_process(self):
+        dff = join(self.this_class_arr,'dataframe/NDVI.df')
+        df = T.load_df(dff)
+        NDVI_spatial_dict = Meta_information().load_data('NDVI')
+        year_list = global_year_range_list
+        gs = global_gs
+        NDVI_list_all = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            drought_year = row['drought_year']
+            NDVI = NDVI_spatial_dict[pix]
+            NDVI_gs = T.monthly_vals_to_annual_val(NDVI,gs,method='array')
+            NDVI_gs_dict = T.dict_zip(year_list,NDVI_gs)
+            NDVI_list = []
+            year_list_i = []
+            for y in range(-1,5):
+                y_i = drought_year+y
+                if y_i in NDVI_gs_dict:
+                    NDVI_list.append(NDVI_gs_dict[drought_year+y])
+                else:
+                    NDVI_list.append([np.nan]*len(gs))
+                year_list_i.append(y_i)
+            NDVI_list = np.array(NDVI_list)
+            NDVI_list = NDVI_list.flatten()
+            NDVI_list_all.append(NDVI_list)
+        df['NDVI_progress'] = NDVI_list_all
+        T.save_df(df,dff)
+        T.df_to_excel(df,dff)
+
+    def add_Temprature_process(self):
+        dff = join(self.this_class_arr,'dataframe/NDVI.df')
+        df = T.load_df(dff)
+        NDVI_spatial_dict = Meta_information().load_data('Temperature-detrend')
+        year_list = global_year_range_list
+        gs = global_gs
+        NDVI_list_all = []
+        for i,row in tqdm(df.iterrows(),total=len(df)):
+            pix = row['pix']
+            drought_year = row['drought_year']
+            NDVI = NDVI_spatial_dict[pix]
+            NDVI_gs = T.monthly_vals_to_annual_val(NDVI,gs,method='array')
+            NDVI_gs_dict = T.dict_zip(year_list,NDVI_gs)
+            NDVI_list = []
+            year_list_i = []
+            for y in range(-1,5):
+                y_i = drought_year+y
+                if y_i in NDVI_gs_dict:
+                    NDVI_list.append(NDVI_gs_dict[drought_year+y])
+                else:
+                    NDVI_list.append([np.nan]*len(gs))
+                year_list_i.append(y_i)
+            NDVI_list = np.array(NDVI_list)
+            NDVI_list = NDVI_list.flatten()
+            NDVI_list_all.append(NDVI_list)
+        df['Temperature_progress'] = NDVI_list_all
+        T.save_df(df,dff)
+        T.df_to_excel(df,dff)
+
+    def process_drought_timing(self):
+        # outdir = join(self.this_class_png, 'phenology_and_drought_timing')
+        # T.mk_dir(outdir)
+        dff = join(self.this_class_arr, 'dataframe/NDVI.df')
+        df = T.load_df(dff)
+        # T.print_head_n(df,10)
+        mon_list = range(4, 11)
+        mon_list = list(mon_list)
+        drt_list = global_drought_type_list
+        ELI_class_list = global_ELI_class_list
+        flag = 1
+        color_list = T.gen_colors(len(mon_list))
+
+        # plt.figure(figsize=(16 * centimeter_factor, 8 * centimeter_factor))
+        for ELI in ELI_class_list:
+            df_ELI = df[df['ELI_class'] == ELI]
+            # plt.subplot(1, 2, flag)
+            # plt.title(f'{ELI}')
+            for drt in drt_list:
+                df_drt = df_ELI[df_ELI['drought_type'] == drt]
+                df_group_dict = T.df_groupby(df_drt, 'drought_mon')
+                plt.subplot(2, 2, flag)
+                flag += 1
+                for mon in mon_list:
+                    df_i = df_group_dict[mon]
+                    # NDVI_progress = df_i['NDVI_progress'].tolist()
+                    NDVI_progress = df_i['Temperature_progress'].tolist()
+                    y = np.nanmean(NDVI_progress,axis=0)
+                    # y = SMOOTH().smooth_convolve(y,window_len=3)
+                    err= T.uncertainty_err_2d(NDVI_progress)
+                    x = list(range(len(NDVI_progress[0])))
+                    plt.plot(x,y,label=mon,color=color_list[mon-4])
+                    # plt.ylim(-1,0.4)
+                    # plt.scatter(x,y,zorder=10)
+                    # plt.fill_between(x, np.array(y) - np.array(err), np.array(y) + np.array(err), alpha=0.2)
+                title = f'{ELI}_{drt}'
+                plt.title(title)
+                plt.legend()
+        plt.show()
+
+        pass
+
+    def neteffect_drought_timing(self):
+        outdir = join(self.this_class_png, 'phenology_and_drought_timing')
+        T.mk_dir(outdir)
+        dff = join(self.this_class_arr, 'dataframe/NDVI.df')
+        df = T.load_df(dff)
+        # T.print_head_n(df,10)
+        mon_list = range(5, 11)
+        mon_list = list(mon_list)
+        drt_list = global_drought_type_list
+        ELI_class_list = global_ELI_class_list
+        # ELI_class_list = ['Water-Limited']
+        # ELI_class_list = ['Energy-Limited']
+        gs = global_gs
+
+        year_post_drought = range(1,6)
+        for year_post in year_post_drought:
+            print(year_post)
+            neteffect_list = []
+            for i,row in df.iterrows():
+                pix = row['pix']
+                drought_year = row['drought_year']
+                NDVI_progress = row['NDVI_progress'].tolist()
+                NDVI_progress_reshape = np.reshape(NDVI_progress,(len(gs),-1))
+                # drought_year_NDVI = NDVI_progress_reshape[1:7]
+                drought_year_NDVI = NDVI_progress_reshape[1:1+year_post]
+                neteffect = np.nansum(drought_year_NDVI)/len(drought_year_NDVI)
+                neteffect_list.append(neteffect)
+            df[f'neteffect_{year_post}'] = neteffect_list
+        plt.figure(figsize=(20 * centimeter_factor, 7.5 * centimeter_factor))
+        flag = 1
+        ylim_dict = {'Water-Limited':[-4,0.3],'Energy-Limited':[-1,0.3]}
+        for ELI in ELI_class_list:
+            for year_post in year_post_drought:
+                df_ELI = df[df['ELI_class'] == ELI]
+                plt.subplot(2, 5, flag)
+                flag += 1
+                for drt in drt_list:
+                    df_drt = df_ELI[df_ELI['drought_type'] == drt]
+                    df_group_dict = T.df_groupby(df_drt, 'drought_mon')
+                    x = []
+                    y = []
+                    err = []
+                    for mon in mon_list:
+                        df_i = df_group_dict[mon]
+                        neteffect = df_i[f'neteffect_{year_post}'].tolist()
+                        x.append(mon)
+                        y.append(np.nanmean(neteffect))
+                        err_i,_,_ = T.uncertainty_err(neteffect)
+                        # err_i = np.nanstd(neteffect)/16.
+                        err.append(err_i)
+                    plt.plot(x,y,color=global_drought_type_color_dict[drt])
+                    plt.scatter(x,y,zorder=10,color=global_drought_type_color_dict[drt],linewidth=0)
+                    plt.fill_between(x, np.array(y) - np.array(err), np.array(y) + np.array(err), alpha=0.2,color=global_drought_type_color_dict[drt],linewidth=0)
+                    plt.ylim(ylim_dict[ELI])
+                    plt.xticks(x)
+        plt.tight_layout()
+        outf = join(outdir, 'neteffect_drought_timing.pdf')
+        plt.savefig(outf)
+        plt.close()
+        T.open_path_and_file(outdir)
+
+
 
 def main():
     # Dataframe().run()
