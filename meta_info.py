@@ -176,7 +176,11 @@ class Meta_information:
                 'path_type': 'file',
             },
             'VPD': {
-                'path': join(data_root, f'VPD/detrend/{year_range}/VPD.npy'),
+                'path': join(data_root, f'VPD/anomaly/{year_range}/VPD.npy'),
+                'path_type': 'file',
+            },
+            'VPD-origin': {
+                'path': join(data_root, f'VPD/per_pix/{year_range}/VPD.npy'),
                 'path_type': 'file',
             },
             'GOME2_SIF-origin': {
