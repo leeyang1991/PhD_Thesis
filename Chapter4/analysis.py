@@ -4482,7 +4482,9 @@ class Tif:
 
     def __init__(self):
         self.this_class_tif = result_root_this_script + 'tif/Tif/'
+        self.this_class_png = result_root_this_script + 'png/Tif/'
         Tools().mk_dir(self.this_class_tif, force=True)
+        Tools().mk_dir(self.this_class_png, force=True)
         pass
 
     def load_df(self):
@@ -4498,6 +4500,7 @@ class Tif:
     def run(self):
 
         # self.plot_recovery()
+        self.plot_recovery_png()
         # self.plot_recovery_spei_1_12()
         # self.gen_recovery_spei_1_12_tif()
         # self.compose_gen_recovery_spei_1_12_tif()
@@ -4508,7 +4511,7 @@ class Tif:
         # self.Koppen_GLC2000_tif()
         # self.Aridity_index_tif()
         # self.plot_drought_events_number()
-        self.SPEI_NDVI_correlation_timing()
+        # self.SPEI_NDVI_correlation_timing()
 
     def plot_recovery(self):
         outdir = self.this_class_tif + 'recovery_time/'
@@ -4525,11 +4528,21 @@ class Tif:
             val = row.recovery_time
             spatial_dic[pix].append(val)
         arr = DIC_and_TIF().pix_dic_to_spatial_arr_mean(spatial_dic)
-        outtif = outdir + 'recovery1.tif'
+        outtif = outdir + 'recovery_2023.tif'
         DIC_and_TIF().arr_to_tif(arr, outtif)
         # plt.imshow(arr,vmin=1,vmax=4)
         # plt.colorbar()
         # plt.show()
+    def plot_recovery_png(self):
+        # f = join(self.this_class_tif, 'recovery_time/recovery_2023.tif')
+        f = join(result_root_this_script,'Main_flow_Tif/tif_recovery_time/tif_recovery_time_Y.tif')
+        f_new = join(result_root_this_script,'Main_flow_Tif/tif_recovery_time/tif_recovery_time_Y_new.tif')
+        spatial_dict = DIC_and_TIF().spatial_tif_to_dic(f)
+        DIC_and_TIF().pix_dic_to_tif(spatial_dict,f_new)
+        outdir = self.this_class_png + 'recovery_time/'
+        T.mk_dir(outdir)
+        Plot().plot_ortho(f_new,vmin=0,vmax=7)
+        plt.show()
 
     def plot_recovery_spei_1_12(self):
         df = Global_vars().load_df()
@@ -8323,7 +8336,7 @@ def main():
     # Main_flow_Early_Peak_Late_Dormant().run()
     # Main_flow_Pick().run()
     # Recovery_time().run()
-    Dataframe().run()
+    # Dataframe().run()
     # Analysis().run()
     Tif().run()
     # RF().run()
