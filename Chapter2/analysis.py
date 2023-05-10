@@ -1,4 +1,5 @@
 # coding=utf-8
+import typer.main
 
 from meta_info import *
 result_root_this_script = join(results_root, 'Chapter2/analysis')
@@ -124,11 +125,43 @@ class Plot_ELI:
 
         DIC_and_TIF().pix_dic_to_tif(ELI_spatial_dict, outf)
 
+class NDVI_average:
 
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir(
+            'NDVI_average',
+            result_root_this_script, mode=2)
+        pass
+
+    def run(self):
+        # self.NDVI_8km_MVC()
+        self.average()
+        pass
+
+    def NDVI_8km_MVC(self):
+        NDVI_dir = join(data_root, 'GIMMS_NDVI/tif_8km_bi_weekly')
+        outdir = join(self.this_class_tif, 'NDVI_8km_MVC')
+        Pre_Process().monthly_compose(NDVI_dir, outdir, method='max')
+        pass
+
+    def average(self):
+        fdir = join(self.this_class_tif, 'NDVI_8km_MVC')
+        outdir = join(self.this_class_tif, 'NDVI_8km_MVC_average')
+        T.mk_dir(outdir)
+        outf = join(outdir, '1982_GS.tif')
+        flist = []
+        for f in T.listdir(fdir):
+            if not f.endswith('.tif'):
+                continue
+            flist.append(join(fdir, f))
+        Pre_Process().compose_tif_list(flist, outf, method='mean')
+
+        pass
 
 def main():
     # Plot_SPEI().run()
-    Plot_ELI().run()
+    # Plot_ELI().run()
+    NDVI_average().run()
 
 if __name__ == '__main__':
     main()
