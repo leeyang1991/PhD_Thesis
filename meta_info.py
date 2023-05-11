@@ -215,6 +215,10 @@ class Meta_information:
                 'path': join(data_root, 'GPCC/anomaly', year_range),
                 'path_type': 'dir',
             },
+            'BEST-anomaly': {
+                'path': join(data_root, 'Berkeley Earth Surface Temperatures/perpix', year_range),
+                'path_type': 'dir',
+            },
         }
         return vars_info_dic
 

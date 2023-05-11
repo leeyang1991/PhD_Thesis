@@ -1740,6 +1740,121 @@ class GPCC:
         T.mk_dir(outdir,force=True)
         Pre_Process().cal_anomaly(fdir,outdir)
 
+class BEST:
+    # Berkeley Earth Surface Temperatures (BEST)
+
+    def __init__(self):
+        self.datadir = join(data_root, 'Berkeley Earth Surface Temperatures')
+        pass
+
+    def run(self):
+        # self.download_monthly()
+        # self.nc_to_tif()
+        # self.resample()
+        self.perpix()
+        # self.anomaly()
+        pass
+
+    def nc_to_tif(self):
+        fdir = join(self.datadir,'nc')
+        outdir = join(self.datadir,'tif')
+        T.mk_dir(outdir,force=True)
+
+        for f in T.listdir(fdir):
+            fpath = join(fdir,f)
+            self.__nc_to_tif(fpath,'temperature',outdir)
+        pass
+
+    def perpix(self):
+        fdir = join(self.datadir,'tif_05')
+        outdir = join(self.datadir,'perpix')
+        T.mk_dir(outdir,force=True)
+        Pre_Process().data_transform(fdir,outdir)
+
+    def resample(self):
+        fdir = join(self.datadir,'tif')
+        outdir = join(self.datadir,'tif_05')
+        T.mk_dir(outdir,force=True)
+        for f in tqdm(T.listdir(fdir)):
+            fpath = join(fdir,f)
+            outf = join(outdir,f)
+            ToRaster().resample_reproj(fpath,outf,0.5)
+        pass
+
+    def anomaly(self):
+        fdir = join(self.datadir,'perpix')
+        outdir = join(self.datadir,'anomaly')
+        T.mk_dir(outdir,force=True)
+        Pre_Process().cal_anomaly(fdir,outdir)
+
+
+    def __nc_to_tif(self, fname, var_name, outdir):
+        try:
+            ncin = Dataset(fname, 'r')
+            print(ncin.variables.keys())
+
+        except:
+            raise UserWarning('File not supported: ' + fname)
+        try:
+            lat = ncin.variables['lat'][:]
+            lon = ncin.variables['lon'][:]
+        except:
+            try:
+                lat = ncin.variables['latitude'][:]
+                lon = ncin.variables['longitude'][:]
+            except:
+                try:
+                    lat = ncin.variables['lat_FULL'][:]
+                    lon = ncin.variables['lon_FULL'][:]
+                except:
+                    raise UserWarning('lat or lon not found')
+        shape = np.shape(lat)
+        try:
+            time = ncin.variables['time_counter'][:]
+            basetime_str = ncin.variables['time_counter'].units
+        except:
+            time = ncin.variables['time'][:]
+            basetime_str = ncin.variables['time'].units
+
+        basetime_unit = 'month'
+        print(basetime_unit)
+        print(basetime_str)
+        # basetime = basetime_str.strip(f'{timedelta_unit} since ')
+        # basetime = '0000-00-00'
+        basetime = datetime.datetime(1,1,1)
+        data = ncin.variables[var_name]
+        if len(shape) == 2:
+            xx, yy = lon, lat
+        else:
+            xx, yy = np.meshgrid(lon, lat)
+        for time_i in tqdm(range(len(time))):
+            time_str = time[time_i]
+            # print(time_str)
+            # print(type(time_str))
+            ratio = time_str - int(time_str)
+            # print(ratio)
+            mon = int(ratio * 12) + 1
+            year = int(time_str)
+            day = 1
+            outf_name = f'{year}{mon:02d}{day:02d}.tif'
+            outpath = join(outdir, outf_name)
+            if isfile(outpath):
+                continue
+            arr = data[time_i]
+            arr = np.array(arr)
+            lon_list = xx.flatten()
+            lat_list = yy.flatten()
+            val_list = arr.flatten()
+            lon_list[lon_list > 180] = lon_list[lon_list > 180] - 360
+            df = pd.DataFrame()
+            df['lon'] = lon_list
+            df['lat'] = lat_list
+            df['val'] = val_list
+            lon_list_new = df['lon'].tolist()
+            lat_list_new = df['lat'].tolist()
+            val_list_new = df['val'].tolist()
+            DIC_and_TIF().lon_lat_val_to_tif(lon_list_new, lat_list_new, val_list_new, outpath)
+
 class GOME2_SIF:
     '''
     ref: Spatially downscaling sun-induced chlorophyll fluorescence leads to an improved temporal correlation with gross primary productivity
@@ -2003,7 +2118,8 @@ def main():
     # GLEAM_SMRoot().run()
     # ERA_2m_T().run()
     # ERA_Precip().run()
-    GPCC().run()
+    # GPCC().run()
+    BEST().run()
     # GOME2_SIF().run()
     # MODIS_LAI_Yuan().run()
     # MODIS_LAI_Chen().run()
