@@ -1640,8 +1640,8 @@ class ERA_Precip:
     def run(self):
         # self.download_monthly()
         # self.nc_to_tif()
-        # self.resample()
-        # self.perpix()
+        self.resample()
+        self.perpix()
         self.anomaly()
         pass
 
@@ -2117,9 +2117,9 @@ def main():
     # GLEAM_ET().run()
     # GLEAM_SMRoot().run()
     # ERA_2m_T().run()
-    # ERA_Precip().run()
+    ERA_Precip().run()
     # GPCC().run()
-    BEST().run()
+    # BEST().run()
     # GOME2_SIF().run()
     # MODIS_LAI_Yuan().run()
     # MODIS_LAI_Chen().run()

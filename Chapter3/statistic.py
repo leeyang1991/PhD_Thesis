@@ -87,7 +87,7 @@ class Dataframe_func:
         return df
 
     def add_ELI_to_df(self,df):
-        import analysis
+        from Chapter3 import analysis
         f = join(analysis.Water_energy_limited_area().this_class_tif, 'ELI/GLEAM-ET_ERA-SM_Temperature.tif')
         spatial_dict = DIC_and_TIF().spatial_tif_to_dic(f)
         df = T.add_spatial_dic_to_df(df, spatial_dict, 'ELI')

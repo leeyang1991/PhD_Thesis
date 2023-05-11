@@ -2,7 +2,6 @@
 import numpy as np
 
 from meta_info import *
-import xymap
 result_root_this_script = join(results_root, 'Chapter3/analysis')
 
 class GLobal_var:
