@@ -207,6 +207,14 @@ class Meta_information:
                 'path': join(data_root, 'ERA_Precip/anomaly', year_range),
                 'path_type': 'dir',
             },
+            'GPCC-origin': {
+                'path': join(data_root, 'GPCC/perpix', year_range),
+                'path_type': 'dir',
+            },
+            'GPCC-anomaly': {
+                'path': join(data_root, 'GPCC/anomaly', year_range),
+                'path_type': 'dir',
+            },
         }
         return vars_info_dic
 

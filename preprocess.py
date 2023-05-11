@@ -1705,6 +1705,41 @@ class ERA_Precip:
         T.mk_dir(outdir,force=True)
         Pre_Process().cal_anomaly(fdir,outdir)
 
+class GPCC:
+
+    def __init__(self):
+        self.datadir = join(data_root, 'GPCC')
+        pass
+
+    def run(self):
+        # self.download_monthly()
+        # self.nc_to_tif()
+        self.perpix()
+        self.anomaly()
+        pass
+
+    def nc_to_tif(self):
+        fdir = join(self.datadir,'nc')
+        outdir = join(self.datadir,'tif')
+        T.mk_dir(outdir,force=True)
+
+        for f in T.listdir(fdir):
+            fpath = join(fdir,f)
+            T.nc_to_tif(fpath,'precip',outdir)
+        pass
+
+    def perpix(self):
+        fdir = join(self.datadir,'tif')
+        outdir = join(self.datadir,'perpix')
+        T.mk_dir(outdir,force=True)
+        Pre_Process().data_transform(fdir,outdir)
+
+    def anomaly(self):
+        fdir = join(self.datadir,'perpix')
+        outdir = join(self.datadir,'anomaly')
+        T.mk_dir(outdir,force=True)
+        Pre_Process().cal_anomaly(fdir,outdir)
+
 class GOME2_SIF:
     '''
     ref: Spatially downscaling sun-induced chlorophyll fluorescence leads to an improved temporal correlation with gross primary productivity
@@ -1966,8 +2001,9 @@ def main():
     # SPI().run()
     # GLEAM_ET().run()
     # GLEAM_SMRoot().run()
-    ERA_2m_T().run()
-    ERA_Precip().run()
+    # ERA_2m_T().run()
+    # ERA_Precip().run()
+    GPCC().run()
     # GOME2_SIF().run()
     # MODIS_LAI_Yuan().run()
     # MODIS_LAI_Chen().run()
