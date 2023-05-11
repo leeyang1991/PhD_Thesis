@@ -191,6 +191,22 @@ class Meta_information:
                 'path': join(data_root, f'GOME2_SIF/detrend/{year_range}'),
                 'path_type': 'dir',
             },
+            'ERA_Ta2m-origin': {
+                'path': join(data_root, 'ERA_2m_T/perpix', year_range),
+                'path_type': 'dir',
+            },
+            'ERA_Ta2m-anomaly': {
+                'path': join(data_root, 'ERA_2m_T/anomaly', year_range),
+                'path_type': 'dir',
+            },
+            'ERA_precip-origin': {
+                'path': join(data_root, 'ERA_Precip/perpix', year_range),
+                'path_type': 'dir',
+            },
+            'ERA_precip-anomaly': {
+                'path': join(data_root, 'ERA_Precip/anomaly', year_range),
+                'path_type': 'dir',
+            },
         }
         return vars_info_dic
 

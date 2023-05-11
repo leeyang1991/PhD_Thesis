@@ -1,5 +1,6 @@
 # coding=utf-8
 import matplotlib.pyplot as plt
+import tweepy.utils
 
 from __init__ import *
 import xarray as xr
@@ -1514,7 +1515,12 @@ class ERA_2m_T:
         pass
 
     def run(self):
-        self.download_data()
+        # self.download_data()
+        # self.download_monthly()
+        # self.nc_to_tif()
+        # self.resample()
+        # self.perpix()
+        self.anomaly()
         pass
 
     def download_data(self):
@@ -1550,7 +1556,7 @@ class ERA_2m_T:
                 "dataset": "interim",
                 "date": date_range,
                 "expver": "1",
-                "grid": "0.75/0.75",
+                "grid": "0.5/0.5",
                 "levtype": "sfc",
                 "param": "167.128",
                 "step": "12",
@@ -1562,6 +1568,142 @@ class ERA_2m_T:
             })
             # exit()
         pass
+
+    def download_monthly(self):
+        import cdsapi
+        c = cdsapi.Client()
+        outdir = join(self.datadir,'nc', 'monthly')
+        T.mk_dir(outdir,force=True)
+        date_list = []
+        init_date = datetime.datetime(1982,1,1)
+        flag = 1
+        for y in range(1982, 2016):
+            outf = join(outdir, f'{y}.nc')
+            c.retrieve(
+                'reanalysis-era5-single-levels-monthly-means',
+                {
+                    'format': 'netcdf',
+                    'variable': '2m_temperature',
+                    'year': f'{y}',
+                    'month': [
+                        '01', '02', '03',
+                        '04', '05', '06',
+                        '07', '08', '09',
+                        '10', '11', '12',
+                    ],
+                    'time': '00:00',
+                    'product_type': 'monthly_averaged_reanalysis',
+                },
+                f'{outf}')
+            # exit()
+        pass
+
+    def nc_to_tif(self):
+        fdir = join(self.datadir,'nc','monthly')
+        outdir = join(self.datadir,'tif')
+        T.mk_dir(outdir,force=True)
+
+        for f in T.listdir(fdir):
+            fpath = join(fdir,f)
+            T.nc_to_tif(fpath,'t2m',outdir)
+        pass
+
+    def resample(self):
+        fdir = join(self.datadir,'tif')
+        outdir = join(self.datadir,'tif_05')
+        T.mk_dir(outdir,force=True)
+        for f in tqdm(T.listdir(fdir)):
+            fpath = join(fdir,f)
+            outf = join(outdir,f)
+            ToRaster().resample_reproj(fpath,outf,0.5)
+
+        pass
+
+    def perpix(self):
+        fdir = join(self.datadir,'tif_05')
+        outdir = join(self.datadir,'perpix')
+        T.mk_dir(outdir,force=True)
+        Pre_Process().data_transform(fdir,outdir)
+
+    def anomaly(self):
+        fdir = join(self.datadir,'perpix')
+        outdir = join(self.datadir,'anomaly')
+        T.mk_dir(outdir,force=True)
+        Pre_Process().cal_anomaly(fdir,outdir)
+
+class ERA_Precip:
+
+    def __init__(self):
+        self.datadir = join(data_root,'ERA_Precip')
+        pass
+
+    def run(self):
+        # self.download_monthly()
+        # self.nc_to_tif()
+        # self.resample()
+        # self.perpix()
+        self.anomaly()
+        pass
+
+
+    def download_monthly(self):
+        import cdsapi
+        c = cdsapi.Client()
+        outdir = join(self.datadir,'nc', 'monthly')
+        T.mk_dir(outdir,force=True)
+        date_list = []
+        init_date = datetime.datetime(1982,1,1)
+        flag = 1
+        for y in range(1982, 2016):
+            outf = join(outdir, f'{y}.nc')
+            c.retrieve(
+                'reanalysis-era5-single-levels-monthly-means',
+                {
+                    'format': 'netcdf',
+                    'variable': 'total_precipitation',
+                    'year': f'{y}',
+                    'month': [
+                        '01', '02', '03',
+                        '04', '05', '06',
+                        '07', '08', '09',
+                        '10', '11', '12',
+                    ],
+                    'time': '00:00',
+                    'product_type': 'monthly_averaged_reanalysis',
+                },
+                f'{outf}')
+            # exit()
+        pass
+    def nc_to_tif(self):
+        fdir = join(self.datadir,'nc','monthly')
+        outdir = join(self.datadir,'tif')
+        T.mk_dir(outdir,force=True)
+
+        for f in T.listdir(fdir):
+            fpath = join(fdir,f)
+            T.nc_to_tif(fpath,'tp',outdir)
+        pass
+    def resample(self):
+        fdir = join(self.datadir,'tif')
+        outdir = join(self.datadir,'tif_05')
+        T.mk_dir(outdir,force=True)
+        for f in tqdm(T.listdir(fdir)):
+            fpath = join(fdir,f)
+            outf = join(outdir,f)
+            ToRaster().resample_reproj(fpath,outf,0.5)
+
+        pass
+    def perpix(self):
+        fdir = join(self.datadir,'tif_05')
+        outdir = join(self.datadir,'perpix')
+        T.mk_dir(outdir,force=True)
+        Pre_Process().data_transform(fdir,outdir)
+
+    def anomaly(self):
+        fdir = join(self.datadir,'perpix')
+        outdir = join(self.datadir,'anomaly')
+        T.mk_dir(outdir,force=True)
+        Pre_Process().cal_anomaly(fdir,outdir)
 
 class GOME2_SIF:
     '''
@@ -1806,7 +1948,7 @@ class MODIS_LAI_Chen:
 
 def main():
     # GIMMS_NDVI().run()
-    SPEI().run()
+    # SPEI().run()
     # SPI().run()
     # TMP().run()
     # Precipitation().run()
@@ -1824,7 +1966,8 @@ def main():
     # SPI().run()
     # GLEAM_ET().run()
     # GLEAM_SMRoot().run()
-    # ERA_2m_T().run()
+    ERA_2m_T().run()
+    ERA_Precip().run()
     # GOME2_SIF().run()
     # MODIS_LAI_Yuan().run()
     # MODIS_LAI_Chen().run()
