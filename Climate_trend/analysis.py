@@ -465,10 +465,164 @@ class Time_series_comparison:
         plt.savefig(outf)
         plt.close()
 
+class Scatter_comparison:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir(
+            'Scatter_comparison',
+            result_root_this_script, mode=2)
+        self.precip_x_product = 'Precipitation-origin'
+        self.temp_x_product = 'Temperature-origin'
+        self.precip_product_list = [
+            'ERA_precip-origin',
+            'GPCC-origin',
+        ]
+        self.temp_product_list = [
+            'ERA_Ta2m-origin',
+            'BEST-anomaly',
+        ]
+        pass
+
+    def run(self):
+        # self.precip_dataframe()
+        # self.temp_dataframe()
+        # self.precip_scatter_plot()
+        self.temp_scatter_plot()
+
+    def precip_dataframe(self):
+        from Chapter3 import statistic
+        product_list = self.precip_product_list
+        gs = global_gs
+        outdir = join(self.this_class_arr,'precip_dataframe')
+        T.mk_dir(outdir)
+        data_dict_all = {}
+        for product in self.precip_product_list:
+            data_dict = Meta_information().load_data(product)
+            data_dict_all[product] = data_dict
+        df = T.spatial_dics_to_df(data_dict_all)
+        df = statistic.Dataframe_func(df).df
+        for product in product_list:
+            vals_list = []
+            for i,row in tqdm(df.iterrows(),total=len(df),desc=product):
+                pix = row['pix']
+                vals = row[product]
+                try:
+                    vals = T.monthly_vals_to_annual_val(vals,grow_season=gs)
+                except:
+                    vals = np.nan
+                vals = vals - np.nanmean(vals) # anomaly
+                vals_list.append(vals)
+            df[product] = vals_list
+        outf = join(outdir,'precip_dataframe.df')
+        T.save_df(df,outf)
+        T.df_to_excel(df,outf)
+
+        pass
+    def temp_dataframe(self):
+        from Chapter3 import statistic
+        outdir = join(self.this_class_arr,'temp_dataframe')
+        T.mk_dir(outdir)
+        product_list = self.temp_product_list
+        gs = global_gs
+        data_dict_all = {}
+        for product in self.temp_product_list:
+            data_dict = Meta_information().load_data(product)
+            data_dict_all[product] = data_dict
+        df = T.spatial_dics_to_df(data_dict_all)
+        df = statistic.Dataframe_func(df).df
+        for product in product_list:
+            vals_list = []
+            for i,row in tqdm(df.iterrows(),total=len(df),desc=product):
+                pix = row['pix']
+                vals = row[product]
+                try:
+                    vals = T.monthly_vals_to_annual_val(vals,grow_season=gs)
+                except:
+                    vals = np.nan
+                vals = vals - np.nanmean(vals) # anomaly
+                vals_list.append(vals)
+            df[product] = vals_list
+        outf = join(outdir,'temp_dataframe.df')
+        T.save_df(df,outf)
+        T.df_to_excel(df,outf)
+
+        pass
+
+
+    def precip_scatter_plot(self):
+        # T.color_map_choice()
+        # plt.show()
+        outdir = join(self.this_class_png,'precip_scatter_plot')
+        T.mk_dir(outdir)
+
+        fdir = join(Trend_comparison().this_class_tif,'precip_trend')
+        product_list = copy.copy(self.precip_product_list)
+        product_list.append(self.precip_x_product)
+        dict_all = {}
+        for product in product_list:
+            fpath = join(fdir,product+'_k.tif')
+            spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
+            dict_all[product] = spatial_dict
+        df = T.spatial_dics_to_df(dict_all)
+
+        for product in self.precip_product_list:
+            vals_x = df[self.precip_x_product].tolist()
+            vals_y = df[product].tolist()
+            # plt.figure(figsize=(8.8*centimeter_factor,8.8*centimeter_factor))
+            fig,ax = plt.subplots(figsize=(8.8*centimeter_factor,8.8*centimeter_factor))
+            # a,b,r,p  = KDE_plot().plot_scatter(vals_x,vals_y,is_plot_1_1_line=True,plot_fit_line=True,s=4,is_equal=True,ax=ax,alpha=1,cmap='gist_yarg')
+            KDE_plot().plot_scatter(vals_x,vals_y,s=4,
+                                               is_equal=True,ax=ax,alpha=.7,cmap='gray_r',marker='o',edgecolors='k',facecolors='none')
+            a,b,r,p = T.nan_line_fit(vals_x,vals_y)
+            plt.title(product+' r2='+str(round(r*r,2))+' p='+str(round(p,2)))
+            # plt.axis('equal')
+            plt.xlim(-.6,.6)
+            plt.ylim(-.6,.6)
+
+            outf = join(outdir,product+'.png')
+            plt.savefig(outf,dpi=300)
+            plt.close()
+        T.open_path_and_file(outdir)
+
+    def temp_scatter_plot(self):
+        outdir = join(self.this_class_png,'temp_scatter_plot1')
+        T.mk_dir(outdir)
+
+        fdir = join(Trend_comparison().this_class_tif,'temp_trend')
+        product_list = copy.copy(self.temp_product_list)
+        product_list.append(self.temp_x_product)
+        dict_all = {}
+        for product in product_list:
+            fpath = join(fdir,product+'_k.tif')
+            spatial_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
+            dict_all[product] = spatial_dict
+        df = T.spatial_dics_to_df(dict_all)
+
+        for product in self.temp_product_list:
+            vals_x = df[self.temp_x_product].tolist()
+            vals_y = df[product].tolist()
+            # plt.figure(figsize=(8.8*centimeter_factor,8.8*centimeter_factor))
+            fig,ax = plt.subplots(figsize=(8.8*centimeter_factor,8.8*centimeter_factor))
+            # a,b,r,p  = KDE_plot().plot_scatter(vals_x,vals_y,is_plot_1_1_line=True,plot_fit_line=True,s=4,is_equal=True,ax=ax,alpha=1,cmap='gist_yarg')
+            KDE_plot().plot_scatter(vals_x,vals_y,s=4,is_plot_1_1_line=True,plot_fit_line=True,
+                                               is_equal=True,ax=ax,alpha=.7,cmap='gray_r',marker='o',edgecolors='k',facecolors='none')
+            a,b,r,p = T.nan_line_fit(vals_x,vals_y)
+            plt.title(product+' r2='+str(round(r*r,2))+' p='+str(round(p,2)))
+            # plt.axis('equal')
+            plt.xlim(0,.09)
+            plt.ylim(0,.09)
+            # plt.show()
+
+            outf = join(outdir,product+'.png')
+            plt.savefig(outf,dpi=300)
+            plt.close()
+        T.open_path_and_file(outdir)
+
 def main():
     # Trend_comparison().run()
     # Correlation_comparison().run()
-    Time_series_comparison().run()
+    # Time_series_comparison().run()
+    Scatter_comparison().run()
     pass
 
 if __name__ == '__main__':
