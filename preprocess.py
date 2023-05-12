@@ -1,4 +1,6 @@
 # coding=utf-8
+import turtledemo.chaos
+
 import matplotlib.pyplot as plt
 import tweepy.utils
 
@@ -1640,6 +1642,7 @@ class ERA_Precip:
     def run(self):
         # self.download_monthly()
         # self.nc_to_tif()
+        self.scale_offset()
         self.resample()
         self.perpix()
         self.anomaly()
@@ -1683,9 +1686,10 @@ class ERA_Precip:
             fpath = join(fdir,f)
             T.nc_to_tif(fpath,'tp',outdir)
         pass
+
     def resample(self):
-        fdir = join(self.datadir,'tif')
-        outdir = join(self.datadir,'tif_05')
+        fdir = join(self.datadir,'tif_offset')
+        outdir = join(self.datadir,'tif_offset_05')
         T.mk_dir(outdir,force=True)
         for f in tqdm(T.listdir(fdir)):
             fpath = join(fdir,f)
@@ -1693,15 +1697,35 @@ class ERA_Precip:
             ToRaster().resample_reproj(fpath,outf,0.5)
 
         pass
+
+    def scale_offset(self):
+        fdir = join(self.datadir,'tif')
+        outdir = join(self.datadir,'tif_offset')
+        T.mk_dir(outdir,force=True)
+        for f in T.listdir(fdir):
+            if not f.endswith('.tif'):
+                continue
+            date = f.split('.')[0]
+            year,mon,day = date[:4],date[4:6],date[6:]
+            year,mon,day = int(year),int(mon),int(day)
+            days = T.number_of_days_in_month(year,mon)
+            fpath = join(fdir,f)
+            outf = join(outdir,f)
+            arr = DIC_and_TIF().spatial_tif_to_arr(fpath)
+            arr = arr * 1000 * days
+            D = DIC_and_TIF(tif_template=fpath)
+            D.arr_to_tif(arr,outf)
+        pass
+
     def perpix(self):
-        fdir = join(self.datadir,'tif_05')
-        outdir = join(self.datadir,'perpix')
+        fdir = join(self.datadir,'tif_offset_05')
+        outdir = join(self.datadir,'perpix','1982-2015')
         T.mk_dir(outdir,force=True)
         Pre_Process().data_transform(fdir,outdir)
 
     def anomaly(self):
-        fdir = join(self.datadir,'perpix')
-        outdir = join(self.datadir,'anomaly')
+        fdir = join(self.datadir,'perpix','1982-2015')
+        outdir = join(self.datadir,'anomaly','1982-2015')
         T.mk_dir(outdir,force=True)
         Pre_Process().cal_anomaly(fdir,outdir)
 
