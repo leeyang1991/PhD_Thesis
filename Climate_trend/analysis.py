@@ -12,9 +12,9 @@ class Trend_comparison:
             'Trend_comparison',
             result_root_this_script, mode=2)
         self.precip_product_list = [
-            'Precipitation-origin',
+            # 'Precipitation-origin',
             'ERA_precip-origin',
-            'GPCC-origin',
+            # 'GPCC-origin',
         ]
         self.temp_product_list = [
             'Temperature-origin',
@@ -71,7 +71,8 @@ class Trend_comparison:
 
         vmin_max_dict = {
             'Precipitation-origin':[-1,1],
-            'ERA_precip-origin':[-0.000035,0.000035],
+            # 'ERA_precip-origin':[-0.000035,0.000035],
+            'ERA_precip-origin':[-1,1],
             'GPCC-origin':[-1,1],
         }
         for product in product_list:
@@ -320,11 +321,14 @@ class Time_series_comparison:
     def run(self):
         # self.precip_dataframe()
         # self.temp_dataframe()
-        self.precip_ts()
+        # self.precip_ts()
+        self.temp_ts()
         pass
 
     def precip_dataframe(self):
         from Chapter3 import statistic
+        product_list = self.precip_product_list
+        gs = global_gs
         outdir = join(self.this_class_arr,'precip_dataframe')
         T.mk_dir(outdir)
         data_dict_all = {}
@@ -333,6 +337,17 @@ class Time_series_comparison:
             data_dict_all[product] = data_dict
         df = T.spatial_dics_to_df(data_dict_all)
         df = statistic.Dataframe_func(df).df
+        for product in product_list:
+            vals_list = []
+            for i,row in tqdm(df.iterrows(),total=len(df),desc=product):
+                pix = row['pix']
+                vals = row[product]
+                try:
+                    vals = T.monthly_vals_to_annual_val(vals,grow_season=gs)
+                except:
+                    vals = np.nan
+                vals_list.append(vals)
+            df[product] = vals_list
         outf = join(outdir,'precip_dataframe.df')
         T.save_df(df,outf)
         T.df_to_excel(df,outf)
@@ -343,34 +358,112 @@ class Time_series_comparison:
         from Chapter3 import statistic
         outdir = join(self.this_class_arr,'temp_dataframe')
         T.mk_dir(outdir)
+        product_list = self.temp_product_list
+        gs = global_gs
         data_dict_all = {}
         for product in self.temp_product_list:
             data_dict = Meta_information().load_data(product)
             data_dict_all[product] = data_dict
         df = T.spatial_dics_to_df(data_dict_all)
         df = statistic.Dataframe_func(df).df
+        for product in product_list:
+            vals_list = []
+            for i,row in tqdm(df.iterrows(),total=len(df),desc=product):
+                pix = row['pix']
+                vals = row[product]
+                try:
+                    vals = T.monthly_vals_to_annual_val(vals,grow_season=gs)
+                except:
+                    vals = np.nan
+                vals_list.append(vals)
+            df[product] = vals_list
         outf = join(outdir,'temp_dataframe.df')
         T.save_df(df,outf)
         T.df_to_excel(df,outf)
 
         pass
 
+
     def precip_ts(self):
+        outdir = join(self.this_class_png,'precip_ts')
+        T.mk_dir(outdir)
+        gs = global_gs
         dff = join(self.this_class_arr,'precip_dataframe','precip_dataframe.df')
         df = T.load_df(dff)
         T.print_head_n(df)
         product_list = self.precip_product_list
         pix_list = df['pix'].tolist()
+        date_list = []
+        for y in range(global_start_year,global_end_year+1):
+            date_list.append(y)
+
+        y_mean_dict = {}
         for product in product_list:
+            y_list = []
             for i,row in tqdm(df.iterrows(),total=len(df),desc=product):
                 pix = row['pix']
                 vals = row[product]
-                vals = T.monthly_vals_to_annual_val(vals)
-                plt.plot(vals)
-                plt.title(f'{product} {pix}')
-                plt.show()
-                pass
+                if type(vals) == float:
+                    continue
+                y_list.append(vals)
+            y_list = np.array(y_list)
+            y_mean = np.nanmean(y_list,axis=0)
+            y_std = T.uncertainty_err_2d(y_list,axis=0)
+            y_mean_dict[product] = (y_mean,y_std)
+        plt.figure(figsize=(8.8*centimeter_factor,5*centimeter_factor))
+        for product in product_list:
+            y_mean,y_std = y_mean_dict[product]
+            y_mean = y_mean - np.nanmean(y_mean)
+            plt.plot(date_list,y_mean,label=product)
+            plt.fill_between(date_list,y_mean-y_std,y_mean+y_std,alpha=0.3)
+        plt.legend()
+        plt.xlim(global_start_year,global_end_year)
+        # plt.show()
+        outf = join(outdir,'precip_ts.pdf')
+        plt.savefig(outf)
+        plt.close()
 
+    def temp_ts(self):
+        outdir = join(self.this_class_png,'temp_ts')
+        T.mk_dir(outdir)
+        gs = global_gs
+        dff = join(self.this_class_arr,'temp_dataframe','temp_dataframe.df')
+        df = T.load_df(dff)
+        T.print_head_n(df)
+        product_list = self.temp_product_list
+        pix_list = df['pix'].tolist()
+        date_list = []
+        for y in range(global_start_year,global_end_year+1):
+            date_list.append(y)
+
+        y_mean_dict = {}
+        for product in product_list:
+            y_list = []
+            spatial_dict = {}
+            for i,row in tqdm(df.iterrows(),total=len(df),desc=product):
+                pix = row['pix']
+                vals = row[product]
+                if type(vals) == float:
+                    continue
+                vals = T.mask_999999_arr(vals,warning=False)
+                y_list.append(vals)
+
+            y_list = np.array(y_list)
+            y_mean = np.nanmean(y_list,axis=0)
+            y_std = T.uncertainty_err_2d(y_list,axis=0)
+            y_mean_dict[product] = (y_mean,y_std)
+        plt.figure(figsize=(8.8*centimeter_factor,5*centimeter_factor))
+        for product in product_list:
+            y_mean,y_std = y_mean_dict[product]
+            y_mean = y_mean - np.nanmean(y_mean)
+            plt.plot(date_list,y_mean,label=product)
+            plt.fill_between(date_list,y_mean-y_std,y_mean+y_std,alpha=0.3)
+        plt.legend()
+        plt.xlim(global_start_year,global_end_year)
+        # plt.show()
+        outf = join(outdir,'temp_ts.pdf')
+        plt.savefig(outf)
+        plt.close()
 
 def main():
     # Trend_comparison().run()
