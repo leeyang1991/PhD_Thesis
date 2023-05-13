@@ -1280,7 +1280,7 @@ class ERA_SM:
         self.datadir = data_root + 'ERA-SM/'
 
     def run(self):
-        # self.download_sm()
+        self.download_sm()
         # self.nc_to_tif()
         # self.resample()
         # self.clean()
@@ -1403,11 +1403,11 @@ class GLEAM_SMRoot:
 
 
     def run(self):
-        # self.nc_to_tif()
+        self.nc_to_tif()
         # self.resample()
         # self.tif_to_perpix_1982_2015()
         # self.anomaly()
-        self.detrend()
+        # self.detrend()
         pass
 
 
@@ -2139,9 +2139,9 @@ def main():
     # ERA().run()
     # SPI().run()
     # GLEAM_ET().run()
-    # GLEAM_SMRoot().run()
+    GLEAM_SMRoot().run()
     # ERA_2m_T().run()
-    ERA_Precip().run()
+    # ERA_Precip().run()
     # GPCC().run()
     # BEST().run()
     # GOME2_SIF().run()

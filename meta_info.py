@@ -95,13 +95,17 @@ class Meta_information:
                 'path':join(data_root, 'SPEI/per_pix_clean',year_range),
                 'path_type':'multi-files',
             },
-            'CCI-SM': {
-                'path': join(data_root, f'CCI-SM/detrend/{year_range}/CCI-SM.npy'),
-                'path_type': 'file',
+            'CCI-SM-origin': {
+                'path': join(data_root, f'CCI-SM/per_pix_no_nan/{year_range}'),
+                'path_type': 'dir',
             },
-            'ERA-SM': {
-                'path': join(data_root, f'ERA-SM/detrend/{year_range}/ERA-SM.npy'),
-                'path_type': 'file',
+            'ERA-SM-origin': {
+                'path': join(data_root, f'ERA-SM/perpix/{year_range}'),
+                'path_type': 'dir',
+            },
+            'GLEAM-SMRoot-origin': {
+                'path': join(data_root, f'GLEAM_SMRoot/perpix/{year_range}'),
+                'path_type': 'dir',
             },
             'SPI': {
                 'path': join(data_root, 'SPI/per_pix',year_range),

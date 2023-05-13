@@ -25,7 +25,7 @@ class Trend_comparison:
 
     def run(self):
         # self.land_pix()
-        # self.precip_trend()
+        self.precip_trend()
         self.plot_precip_trend()
         # self.temp_trend()
         # self.plot_temp_trend()
@@ -618,11 +618,73 @@ class Scatter_comparison:
             plt.close()
         T.open_path_and_file(outdir)
 
+class SPEI_SM:
+
+    def __init__(self):
+        self.this_class_arr, self.this_class_tif, self.this_class_png = T.mk_class_dir(
+            'SPEI_SM',
+            result_root_this_script, mode=2)
+        self.product_list = [
+            'GLEAM-SMRoot-origin',
+            'ERA-SM-origin',
+            'CCI-SM-origin',
+        ]
+        pass
+
+    def run(self):
+        self.SM_trend()
+        pass
+
+    def SM_trend(self):
+        land_pix = self.land_pix()
+        product_list = self.product_list
+        outdir = join(self.this_class_tif,'SM_trend')
+        T.mk_dir(outdir)
+        gs = global_gs
+        for product in product_list:
+            data_dict = Meta_information().load_data(product)
+            spatial_dict_k = {}
+            spatial_dict_p = {}
+            for pix in tqdm(data_dict,desc=product):
+                r, c = pix
+                if r > 121:
+                    continue
+                if not pix in land_pix:
+                    continue
+                vals = data_dict[pix]
+                vals = np.array(vals)
+                vals[vals<0] = np.nan
+                # print(vals)
+                vals_gs = T.monthly_vals_to_annual_val(vals, grow_season=gs)
+                try:
+                    a, b, r, p = T.nan_line_fit(list(range(len(vals_gs))), vals_gs)
+                except:
+                    continue
+                spatial_dict_k[pix] = a
+                spatial_dict_p[pix] = p
+            outf_k = join(outdir,product+'_k.tif')
+            outf_p = join(outdir,product+'_p.tif')
+            DIC_and_TIF().pix_dic_to_tif(spatial_dict_k,outf_k)
+            DIC_and_TIF().pix_dic_to_tif(spatial_dict_p,outf_p)
+
+    def land_pix(self):
+
+        land_tif = join(this_root,'conf','land.tif')
+        spatial_dict = DIC_and_TIF().spatial_tif_to_dic(land_tif)
+        land_pix_dict = {}
+        for pix in spatial_dict:
+            val = spatial_dict[pix]
+            if np.isnan(val):
+                continue
+            land_pix_dict[pix] = val
+        return land_pix_dict
+
 def main():
     # Trend_comparison().run()
     # Correlation_comparison().run()
     # Time_series_comparison().run()
-    Scatter_comparison().run()
+    # Scatter_comparison().run()
+    SPEI_SM().run()
     pass
 
 if __name__ == '__main__':
