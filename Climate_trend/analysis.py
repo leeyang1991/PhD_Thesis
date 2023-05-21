@@ -632,7 +632,13 @@ class SPEI_SM:
         pass
 
     def run(self):
-        self.SM_trend()
+        # self.SM_trend()
+        # self.plot_sm()
+        # self.plot_spei()
+        # self.dataframe_sm_time_sereis()
+        # self.plot_time_sereis_ltd()
+        # self.sm_trend_dataframe()
+        self.scatter_plot()
         pass
 
     def SM_trend(self):
@@ -666,6 +672,173 @@ class SPEI_SM:
             outf_p = join(outdir,product+'_p.tif')
             DIC_and_TIF().pix_dic_to_tif(spatial_dict_k,outf_k)
             DIC_and_TIF().pix_dic_to_tif(spatial_dict_p,outf_p)
+
+    def plot_sm(self):
+        product_color_dict = {
+            'GLEAM-SMRoot-origin':(-0.003,0.003),
+            'ERA-SM-origin':(-0.001,0.001),
+            'CCI-SM-origin':(-0.001,0.001),
+        }
+        product_list = self.product_list
+        fdir = join(self.this_class_tif, 'SM_trend')
+        outdir = join(self.this_class_png,'SM_trend')
+        T.mk_dir(outdir)
+        temp_root = join(this_root,'temp')
+
+        for product in product_list:
+            vmin,vmax = product_color_dict[product]
+            fpath_k = join(fdir,f'{product}_k.tif')
+            fpath_p = join(fdir,f'{product}_p.tif')
+            m,ret = Plot().plot_ortho(fpath_k,vmin=vmin,vmax=vmax,cmap=global_cmap)
+            Plot().plot_ortho_significance_scatter(m,fpath_p,temp_root,s=1,marker='o')
+            plt.title(product)
+            # plt.show()
+            outf = join(outdir,f'{product}.png')
+            plt.savefig(outf,dpi=300)
+            plt.close()
+        T.open_path_and_file(outdir)
+
+    def plot_spei(self):
+        fdir = join(self.this_class_tif, 'SPEI_trend')
+        outdir = join(self.this_class_png,'SPEI_trend')
+        T.mk_dir(outdir)
+        temp_root = join(this_root,'temp')
+        product = 'spei12_trend'
+        vmin,vmax = -0.1,0.1
+        fpath_k = join(fdir,f'{product}.tif')
+        fpath_p = join(fdir,f'{product}_p.tif')
+        m,ret = Plot().plot_ortho(fpath_k,vmin=vmin,vmax=vmax,cmap=global_cmap)
+        Plot().plot_ortho_significance_scatter(m,fpath_p,temp_root,s=1,marker='o')
+        plt.title(product)
+        # plt.show()
+        outf = join(outdir,f'{product}.png')
+        plt.savefig(outf,dpi=300)
+        plt.close()
+        T.open_path_and_file(outdir)
+
+    def dataframe_sm_time_sereis(self):
+        from Chapter3 import statistic
+        outdir = join(self.this_class_arr, 'dataframe_sm_time_sereis')
+        T.mk_dir(outdir)
+        T.open_path_and_file(outdir)
+        gs = global_gs
+        spei_scale = global_spei_list
+        product_list = self.product_list
+        all_dict = {}
+        for pruduct in product_list:
+            data = Meta_information().load_data(pruduct)
+            all_dict[pruduct] = data
+        df = T.spatial_dics_to_df(all_dict)
+        df = statistic.Dataframe_func(df).df
+        outf = join(outdir, 'ts.df')
+        T.save_df(df, outf)
+        T.df_to_excel(df, outf)
+
+    def plot_time_sereis_ltd(self):
+        dff = join(self.this_class_arr, 'dataframe_sm_time_sereis', 'ts.df')
+        df = T.load_df(dff)
+
+        outdir = join(self.this_class_png, 'plot_time_sereis_ltd')
+        T.mk_dir(outdir)
+
+        gs = global_gs
+        year_list = []
+        for year in range(global_start_year, global_end_year + 1):
+            year_list.append(year)
+        y_list = []
+        matrix = []
+        ltd_list = global_ELI_class
+        product_list = self.product_list
+        for product in product_list:
+            plt.figure(figsize=(5, 3))
+            title = ''
+            for ltd in ltd_list:
+                df_ltd = df[df['ELI_class'] == ltd]
+                vals = df_ltd[product].tolist()
+                vals_gs = []
+                for val in tqdm(vals, desc=f'{ltd}'):
+                    try:
+                        val_gs = T.monthly_vals_to_annual_val(val, grow_season=gs, method='mean')
+                        val_gs_anomaly = val_gs - np.nanmean(val_gs)
+                        vals_gs.append(val_gs_anomaly)
+                    except:
+                        continue
+                vals_gs_mean = np.nanmean(vals_gs, axis=0)
+                vals_gs_err = np.nanstd(vals_gs, axis=0)
+                vals_gs_err = vals_gs_err / 4.
+                plt.plot(year_list, vals_gs_mean,label=ltd)
+                plt.xticks(year_list, rotation=90)
+                plt.fill_between(year_list, np.array(vals_gs_mean) - np.array(vals_gs_err),
+                                 np.array(vals_gs_mean) + np.array(vals_gs_err), alpha=0.5)
+                # plt.title(ltd)
+                a,b,r,p = T.nan_line_fit(year_list,vals_gs_mean)
+                KDE_plot().plot_fit_line(a, b, r, p, year_list,is_label=False, is_formula=False)
+                plt.xlabel('Year')
+                plt.ylabel(product)
+                # plt.ylim(-0.9, 0.9)
+                plt.legend()
+                title += f'{ltd} {a:.5f} / '
+            plt.title(title)
+            plt.tight_layout()
+            # plt.show()
+            outf = join(outdir, f'{product}.pdf')
+            plt.savefig(outf)
+            plt.close()
+        T.open_path_and_file(outdir)
+
+    def sm_trend_dataframe(self):
+        from Chapter3 import statistic
+        outdir = join(self.this_class_arr,'sm_trend_dataframe')
+        fdir = join(self.this_class_tif,'SM_trend')
+        T.mk_dir(outdir)
+        product_list = self.product_list
+        data_dict_all = {}
+        for product in product_list:
+            fpath = join(fdir,f'{product}_k.tif')
+            data_dict = DIC_and_TIF().spatial_tif_to_dic(fpath)
+            data_dict_all[product] = data_dict
+        spei_fdir = join(self.this_class_tif,'SPEI_trend')
+        spei_path = join(spei_fdir,'spei12_trend.tif')
+        data_dict_spei = DIC_and_TIF().spatial_tif_to_dic(spei_path)
+        data_dict_all['spei12'] = data_dict_spei
+        df = T.spatial_dics_to_df(data_dict_all)
+        df = statistic.Dataframe_func(df).df
+        outf = join(outdir,'sm_trend.df')
+        T.save_df(df,outf)
+        T.df_to_excel(df,outf)
+        T.open_path_and_file(outdir)
+
+        pass
+
+    def scatter_plot(self):
+        outdir = join(self.this_class_png, 'precip_scatter_plot')
+        T.mk_dir(outdir)
+
+        dff = join(self.this_class_arr,'sm_trend_dataframe','sm_trend.df')
+        df = T.load_df(dff)
+
+        for product in self.product_list:
+            vals_x = df['spei12'].tolist()
+            vals_y = df[product].tolist()
+            # plt.figure(figsize=(8.8*centimeter_factor,8.8*centimeter_factor))
+            fig, ax = plt.subplots(figsize=(8.8 * centimeter_factor, 8.8 * centimeter_factor))
+            # a,b,r,p  = KDE_plot().plot_scatter(vals_x,vals_y,is_plot_1_1_line=True,plot_fit_line=True,s=4,is_equal=True,ax=ax,alpha=1,cmap='gist_yarg')
+            KDE_plot().plot_scatter(vals_x, vals_y, s=4,
+                                    is_equal=False, ax=ax, alpha=.7, cmap='gray_r', marker='o', edgecolors='k',
+                                    facecolors='none')
+            a, b, r, p = T.nan_line_fit(vals_x, vals_y)
+            KDE_plot().plot_fit_line(a, b, r, p, vals_x, is_label=False, is_formula=False, ax=ax, line_color='r')
+            plt.title(product + ' r2=' + str(round(r * r, 2)) + ' p=' + str(round(p, 2)))
+            # plt.axis('equal')
+            plt.xlim(-.06, .06)
+            plt.ylim(-.0015, .0015)
+        # plt.show()
+
+            outf = join(outdir, product + '.png')
+            plt.savefig(outf, dpi=300)
+            plt.close()
+        T.open_path_and_file(outdir)
+        pass
 
     def land_pix(self):
 
